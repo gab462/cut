@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef INCLUDE_CUT_H
-#define INCLUDE_CUT_H
+#ifndef INCLUDE_CUT_C
+#define INCLUDE_CUT_C
 
 #include <stdlib.h>
 #include <string.h>
