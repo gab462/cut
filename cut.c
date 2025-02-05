@@ -295,6 +295,13 @@ sb_append(struct string_buffer *string, char *other)
 }
 
 static inline
+void
+sb_terminate(struct string_buffer *string)
+{
+	sb_append_sv(string, (struct string_view){ .ptr = "", .len = 1 });
+}
+
+static inline
 struct string_buffer
 sb_from_file(char *path)
 {
