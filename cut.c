@@ -99,7 +99,10 @@ static inline
 bool
 sv_equal(struct string_view a, struct string_view b)
 {
-	return memcmp(a.ptr, b.ptr, len) == 0;
+	if(a.len != b.len)
+		return false;
+
+	return memcmp(a.ptr, b.ptr, a.len) == 0;
 }
 
 static inline
