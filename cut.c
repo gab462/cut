@@ -74,7 +74,8 @@ da_buf_cap(int len)
 
 #define da_reset(da)                          \
 	do{                                   \
-		free((da)->ptr);              \
+		if((da)->ptr)                 \
+			free((da)->ptr);      \
 		memset(da, 0, sizeof(*(da))); \
 	}while(0)
 
@@ -342,7 +343,8 @@ static inline
 void
 sb_reset(struct string_buffer *string)
 {
-	free(string->ptr);
+	if(string->ptr)
+		free(string->ptr);
 	memset(string, 0, sizeof(struct string_buffer));
 }
 
