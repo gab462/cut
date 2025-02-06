@@ -95,6 +95,13 @@ sv(char *string)
 }
 
 static inline
+bool
+sv_equal(struct string_view a, struct string_view b)
+{
+	return memcmp(a.ptr, b.ptr, len) == 0;
+}
+
+static inline
 struct string_view
 sv_right(struct string_view string, int n)
 {
