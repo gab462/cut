@@ -197,7 +197,7 @@ static inline
 struct string_view *
 sv_split_sv(struct string_view string, struct string_view sep, int *count)
 {
-	struct { struct string_view *ptr; int len; int cap; } strings = {0};
+	struct { struct string_view *ptr; int len; int cap; } strings = {};
 
 	while(string.len > 0){
 		int found = sv_find(string, sep);
@@ -249,6 +249,28 @@ struct string_view *
 sv_split_once(struct string_view string, char *sep, int *count)
 {
 	return(sv_split_once_sv(string, sv(sep), count));
+}
+
+static inline
+int
+sv_count_sv(struct string_view string, struct string_view substring)
+{
+	int count = 0;
+
+	for(int i = 0; i < string.len; ++i){
+		if(sv_equal(sv_chop_left(string, i), substring)){
+			++count;
+			i += substring.len - 1;
+		}
+	}
+
+	return(count);
+}
+
+static inline
+sv_count(struct string_view string, char *substring)
+{
+	return(sv_count_sv(string, sv(substring)));
 }
 
 static inline
@@ -320,7 +342,7 @@ sb_from_file(char *path)
 
 	if(f == NULL){
 		perror("string_from_file");
-		return((struct string_buffer){0});
+		return((struct string_buffer){});
 	}
 
 	fseek(f, 0, SEEK_END);
@@ -415,12 +437,112 @@ void ma_free(struct memory_arena arena)
 	munmap(arena.start, ma_size);
 }
 
-#define arena_da_reserve(arena, da, cap)                                        \
-	do{                                                                     \
-		da->items = arena_allocate_n(arena, typeof(da->items[0]), cap); \
-		da->cap = cap;                                                  \
+#define ma_da_reserve(arena, da, cap)                                               \
+	do{                                                                         \
+		(da)->items = ma_allocate_n(arena, typeof((da)->items[0]), cap); \
+		(da)->cap = cap;                                                    \
 	}while(0)
 
-#define arena_sb_reserve(arena, sb, cap) arena_da_reserve(arena, sb, cap)
+#define ma_sb_reserve(arena, sb, cap) ma_da_reserve(arena, sb, cap)
+
+// TODO: reduce duplication for arena string functions
+
+static inline
+char *
+ma_sv_save(struct memory_arena *arena, struct string_view string)
+{
+	char *cstr = ma_allocate_n(arena, char, string.len + 1);
+
+	memcpy(cstr, string.ptr, string.len);
+	cstr[string.len] = '\0';
+
+	return(cstr);
+}
+
+static inline
+struct string_view *
+ma_sv_split_sv(struct memory_arena *arena,
+		struct string_view string, struct string_view sep, int *count)
+{
+	struct { struct string_view *ptr; int len; int cap; } strings = {};
+
+	ma_da_reserve(arena, &strings, sv_count_sv(string, sep) + 1);
+
+	while(string.len > 0){
+		int found = sv_find(string, sep);
+
+		if(found == -1)
+			found = string.len;
+
+		da_push(&strings, sv_left(string, found));
+		string = sv_chop_left(string, found + sep.len);
+	}
+
+	*count = strings.len;
+
+	return(strings.ptr);
+}
+
+static inline
+struct string_view *
+ma_sv_split(struct memory_arena *arena,
+		struct string_view string, char *sep, int *count)
+{
+	return(ma_sv_split_sv(arena, string, sv(sep), count));
+}
+
+static inline
+struct string_view *
+ma_sv_split_once_sv(struct memory_arena *arena,
+		struct string_view string, struct string_view sep, int *count)
+{
+	struct { struct string_view *ptr; int len; int cap; } strings = {};
+
+	int found = sv_find(string, sep);
+
+	if(found == -1){
+		ma_da_reserve(arena, &strings, 1);
+		da_push(&strings, string);
+	}else{
+		ma_da_reserve(arena, &strings, 2);
+		da_push(&strings, sv_left(string, found));
+		da_push(&strings, sv_chop_left(string, found + sep.len));
+	}
+
+	*count = strings.len;
+
+	return(strings.ptr);
+}
+
+static inline
+struct string_view *
+ma_sv_split_once(struct memory_arena *arena,
+		struct string_view string, char *sep, int *count)
+{
+	return(ma_sv_split_once_sv(arena, string, sv(sep), count));
+}
+
+static inline
+struct string_view
+ma_sv_from_file(struct memory_arena *arena, char *path)
+{
+	FILE *f = fopen(path, "rb");
+
+	if(f == NULL){
+		perror("string_from_file");
+		return((struct string_view){});
+	}
+
+	fseek(f, 0, SEEK_END);
+	int fsize = ftell(f);
+	fseek(f, 0, SEEK_SET);
+
+	char *buf = ma_allocate_n(arena, char, fsize);
+	fread(buf, fsize, 1, f);
+
+	fclose(f);
+
+	return((struct string_view){ .ptr = buf, .len = fsize });
+}
 
 #endif
