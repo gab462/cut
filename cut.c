@@ -423,7 +423,7 @@ void *ma_allocate_impl(struct memory_arena *arena, int size, int alignment)
 
 #define ma_allocate(arena, T) ma_allocate_impl(arena, sizeof(T), alignof(T))
 
-#define ma_allocate_n(arena, T, count) ma_allocate_impl(arena, sizeof(T) * count, alignof(T))
+#define ma_allocate_n(arena, T, count) ma_allocate_impl(arena, sizeof(T) * (count), alignof(T))
 
 static inline
 struct memory_arena
@@ -440,8 +440,8 @@ void ma_free(struct memory_arena arena)
 
 #define ma_da_reserve(arena, da, capacity)                                        \
 	do{                                                                       \
-		(da)->ptr = ma_allocate_n(arena, typeof((da)->ptr[0]), capacity); \
 		(da)->cap = capacity;                                             \
+		(da)->ptr = ma_allocate_n(arena, typeof((da)->ptr[0]), (da)->cap); \
 	}while(0)
 
 #define ma_sb_reserve(arena, sb, cap) ma_da_reserve(arena, sb, cap)
