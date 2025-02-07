@@ -268,6 +268,7 @@ sv_count_sv(struct string_view string, struct string_view substring)
 }
 
 static inline
+int
 sv_count(struct string_view string, char *substring)
 {
 	return(sv_count_sv(string, sv(substring)));
@@ -437,10 +438,10 @@ void ma_free(struct memory_arena arena)
 	munmap(arena.start, ma_size);
 }
 
-#define ma_da_reserve(arena, da, cap)                                               \
-	do{                                                                         \
-		(da)->items = ma_allocate_n(arena, typeof((da)->items[0]), cap); \
-		(da)->cap = cap;                                                    \
+#define ma_da_reserve(arena, da, capacity)                                        \
+	do{                                                                       \
+		(da)->ptr = ma_allocate_n(arena, typeof((da)->ptr[0]), capacity); \
+		(da)->cap = capacity;                                             \
 	}while(0)
 
 #define ma_sb_reserve(arena, sb, cap) ma_da_reserve(arena, sb, cap)
