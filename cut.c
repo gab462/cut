@@ -258,7 +258,7 @@ sv_count_sv(struct string_view string, struct string_view substring)
 	int count = 0;
 
 	for(int i = 0; i < string.len; ++i){
-		if(sv_equal(sv_chop_left(string, i), substring)){
+		if(sv_equal(sv_left(sv_chop_left(string, i), substring.len), substring)){
 			++count;
 			i += substring.len - 1;
 		}
