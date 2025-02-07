@@ -100,9 +100,9 @@ bool
 sv_equal(struct string_view a, struct string_view b)
 {
 	if(a.len != b.len)
-		return false;
+		return(false);
 
-	return memcmp(a.ptr, b.ptr, a.len) == 0;
+	return(memcmp(a.ptr, b.ptr, a.len) == 0);
 }
 
 static inline
