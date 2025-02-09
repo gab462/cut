@@ -435,7 +435,8 @@ ma_scratch(struct memory_arena arena)
 static inline
 void ma_free(struct memory_arena arena)
 {
-	munmap(arena.start, ma_size);
+	if(arena.start)
+		munmap(arena.start, ma_size);
 }
 
 #define ma_da_reserve(arena, da, capacity)                                        \
