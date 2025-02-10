@@ -39,47 +39,54 @@ da_buf_cap(int len)
 	return(cap);
 }
 
-#define da_reserve(da, capacity)                                                  \
-	do{								          \
-		(da)->cap = capacity;					          \
-		(da)->ptr = realloc((da)->ptr, (da)->cap * sizeof((da)->ptr[0])); \
-									          \
-		assert((da)->ptr != NULL);				          \
+#define da_reserve(da, capacity)					\
+	do{								\
+		(da)->cap = capacity;					\
+		(da)->ptr =						\
+			realloc((da)->ptr,				\
+				(da)->cap * sizeof(*(da)->ptr));	\
+									\
+		assert((da)->ptr != NULL);				\
 	}while(0)
 
-#define da_push(da, ...)                                                \
-	do{                                                             \
-		typeof((da)->ptr[0]) items[] = { __VA_ARGS__ };         \
-		int item_count = sizeof(items) / sizeof(items[0]);      \
-		                                                        \
-		int previous_pos = (da)->len;                           \
-		(da)->len += item_count;                                \
-		                                                        \
-		if((da)->len > (da)->cap)                               \
-			da_reserve(da, da_buf_cap((da)->len));          \
-		                                                        \
-		memcpy((da)->ptr + previous_pos, items, sizeof(items)); \
+#define da_push_items(da, items, item_count)			\
+	do{							\
+		int previous_pos = (da)->len;			\
+		(da)->len += item_count;			\
+								\
+		if((da)->len > (da)->cap)			\
+			da_reserve(da, da_buf_cap((da)->len));	\
+								\
+		memcpy((da)->ptr + previous_pos, items,		\
+		       sizeof(*(da)->ptr) * item_count);	\
 	}while(0)
 
-#define da_pop(da)              \
-	do{                     \
-		(da)->len -= 1; \
+#define da_push(da, ...)						\
+	do{								\
+		typeof(*(da)->ptr) items[] = { __VA_ARGS__ };		\
+		int item_count = sizeof(items) / sizeof(items[0]);	\
+		da_push_items(da, items, item_count);			\
 	}while(0)
 
-#define da_swap_delete(da, idx)                            \
-	do{                                                \
-		(da)->ptr[idx] = (da)->ptr[(da)->len - 1]; \
-		da_pop(da);                                \
+#define da_pop(da)				\
+	do{					\
+		(da)->len -= 1;			\
 	}while(0)
 
-#define da_reset(da)                          \
-	do{                                   \
-		if((da)->ptr)                 \
-			free((da)->ptr);      \
-		memset(da, 0, sizeof(*(da))); \
+#define da_swap_delete(da, idx)					\
+	do{							\
+		(da)->ptr[idx] = (da)->ptr[(da)->len - 1];	\
+		da_pop(da);					\
 	}while(0)
 
-#define da_for(it, da) \
+#define da_reset(da)				\
+	do{					\
+		if((da)->ptr)			\
+			free((da)->ptr);	\
+		memset(da, 0, sizeof(*(da)));	\
+	}while(0)
+
+#define da_for(it, da)							\
 	for (typeof((da).ptr) it = (da).ptr; it != (da).ptr + (da).len; ++it)
 
 struct string_view
@@ -312,13 +319,7 @@ static inline
 void
 sb_append_sv(struct string_buffer *string, struct string_view other)
 {
-	int previous_pos = string->len;
-	string->len += other.len;
-
-	if(string->len > string->cap)
-		da_reserve(string, da_buf_cap(string->len));
-
-	memcpy(string->ptr + previous_pos, other.ptr, other.len);
+	da_push_items(string, other.ptr, other.len);
 }
 
 static inline
@@ -388,7 +389,7 @@ ma_reset(struct memory_arena *arena)
 {
 	if(arena->start == NULL){
 		arena->start = mmap(NULL, ma_size, PROT_READ | PROT_WRITE,
-				MAP_ANON | MAP_PRIVATE | MAP_NORESERVE, -1, 0);
+				    MAP_ANON | MAP_PRIVATE | MAP_NORESERVE, -1, 0);
 
 		assert(arena->start != MAP_FAILED);
 	}
@@ -439,13 +440,18 @@ void ma_free(struct memory_arena arena)
 		munmap(arena.start, ma_size);
 }
 
-#define ma_da_reserve(arena, da, capacity)                                        \
-	do{                                                                       \
-		(da)->cap = capacity;                                             \
+#define ma_da_reserve(arena, da, capacity)				\
+	do{								\
+		(da)->cap = capacity;					\
 		(da)->ptr = ma_allocate_n(arena, typeof((da)->ptr[0]), (da)->cap); \
 	}while(0)
 
-#define ma_sb_reserve(arena, sb, cap) ma_da_reserve(arena, sb, cap)
+static inline
+void
+ma_sb_reserve(struct memory_arena *arena, struct string_buffer *string, int cap)
+{
+	ma_da_reserve(arena, string, cap);
+}
 
 // TODO: reduce duplication for arena string functions
 
@@ -464,7 +470,7 @@ ma_sv_save(struct memory_arena *arena, struct string_view string)
 static inline
 struct string_view *
 ma_sv_split_sv(struct memory_arena *arena,
-		struct string_view string, struct string_view sep, int *count)
+	       struct string_view string, struct string_view sep, int *count)
 {
 	struct { struct string_view *ptr; int len; int cap; } strings = {};
 
@@ -488,7 +494,7 @@ ma_sv_split_sv(struct memory_arena *arena,
 static inline
 struct string_view *
 ma_sv_split(struct memory_arena *arena,
-		struct string_view string, char *sep, int *count)
+	    struct string_view string, char *sep, int *count)
 {
 	return(ma_sv_split_sv(arena, string, sv(sep), count));
 }
@@ -496,7 +502,7 @@ ma_sv_split(struct memory_arena *arena,
 static inline
 struct string_view *
 ma_sv_split_once_sv(struct memory_arena *arena,
-		struct string_view string, struct string_view sep, int *count)
+		    struct string_view string, struct string_view sep, int *count)
 {
 	struct { struct string_view *ptr; int len; int cap; } strings = {};
 
@@ -519,7 +525,7 @@ ma_sv_split_once_sv(struct memory_arena *arena,
 static inline
 struct string_view *
 ma_sv_split_once(struct memory_arena *arena,
-		struct string_view string, char *sep, int *count)
+		 struct string_view string, char *sep, int *count)
 {
 	return(ma_sv_split_once_sv(arena, string, sv(sep), count));
 }
