@@ -5,14 +5,14 @@ static inline
 void *
 malloc(int)
 {
-    return(nullptr);
+	return(nullptr);
 }
 
 static inline
 void *
 realloc(void *, int)
 {
-    return(nullptr);
+	return(nullptr);
 }
 
 static inline void free(void *) {}

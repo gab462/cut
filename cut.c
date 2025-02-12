@@ -46,7 +46,7 @@ da_buf_cap(int len)
 			realloc((da)->ptr,				\
 				(da)->cap * sizeof(*(da)->ptr));	\
 									\
-		assert((da)->ptr != NULL);				\
+		assert((da)->ptr != nullptr);				\
 	}while(0)
 
 #define da_push_items(da, items, item_count)			\
@@ -286,7 +286,7 @@ char *
 sv_save(struct string_view string)
 {
 	char *cstr = malloc(string.len + 1);
-	assert(cstr != NULL);
+	assert(cstr != nullptr);
 
 	memcpy(cstr, string.ptr, string.len);
 	cstr[string.len] = '\0';
@@ -342,7 +342,7 @@ sb_from_file(char *path)
 {
 	FILE *f = fopen(path, "rb");
 
-	if(f == NULL){
+	if(f == nullptr){
 		perror("string_from_file");
 		return((struct string_buffer){});
 	}
@@ -387,8 +387,8 @@ static inline
 void
 ma_reset(struct memory_arena *arena)
 {
-	if(arena->start == NULL){
-		arena->start = mmap(NULL, ma_size, PROT_READ | PROT_WRITE,
+	if(arena->start == nullptr){
+		arena->start = mmap(nullptr, ma_size, PROT_READ | PROT_WRITE,
 				    MAP_ANON | MAP_PRIVATE | MAP_NORESERVE, -1, 0);
 
 		assert(arena->start != MAP_FAILED);
@@ -410,7 +410,7 @@ ma_align(struct memory_arena *arena, int alignment)
 static inline
 void *ma_allocate_impl(struct memory_arena *arena, int size, int alignment)
 {
-	if(arena->start == NULL)
+	if(arena->start == nullptr)
 		ma_reset(arena);
 
 	ma_align(arena, alignment);
@@ -536,7 +536,7 @@ ma_sv_from_file(struct memory_arena *arena, char *path)
 {
 	FILE *f = fopen(path, "rb");
 
-	if(f == NULL){
+	if(f == nullptr){
 		perror("string_from_file");
 		return((struct string_view){});
 	}

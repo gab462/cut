@@ -4,36 +4,47 @@
 static inline
 int
 memcmp(const char *a, const char *b, int len){
-    // 0 for equal and non-zero for non-equal
+	// 0 for equal and non-zero for non-equal
 
-    for(int i = 0; i < len; ++i){
-        if(a[i] != b[i])
-            return(-1);
-    }
+	for(int i = 0; i < len; ++i){
+		if(a[i] != b[i])
+			return(-1);
+	}
 
-    return(0);
+	return(0);
 }
 
 static inline
 int
 strlen(const char *s)
 {
-    int len = 0;
+	int len = 0;
 
-    while(*s){
-        ++s;
-        ++len;
-    }
+	while(*s){
+		++s;
+		++len;
+	}
 
-    return(len);
+	return(len);
 }
 
 static inline
 void
 memcpy(void *dst, const void *src, int len)
 {
-    for(int i = 0; i < len; ++i)
-        ((char *) dst)[i] = ((char *) src)[i];
+	for(int i = 0; i < len; ++i)
+		((char *) dst)[i] = ((char *) src)[i];
+}
+
+
+static inline
+void *
+memset(void *b, int c, int len)
+{
+	for(int i = 0; i < len; ++i)
+		((char *)b)[i] = c;
+
+	return(b);
 }
 
 #endif
