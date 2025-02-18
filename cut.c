@@ -21,15 +21,51 @@
 #ifndef INCLUDE_CUT_C
 #define INCLUDE_CUT_C
 
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <assert.h>
 #include <stdio.h>
 
+struct da_header
+{
+	int len, cap;
+	max_align_t start;
+};
+
+constexpr int da_header_offset = sizeof(struct da_header) - sizeof(max_align_t);
+
+static inline
+struct da_header *
+da_header(void *da)
+{
+	return((struct da_header *) (((char *) da) - da_header_offset));
+}
+
 static inline
 int
-da_buf_cap(int len)
+da_len(void *da)
+{
+	if (da != nullptr)
+		return(da_header(da)->len);
+	else
+		return(0);
+}
+
+static inline
+int
+da_cap(void *da)
+{
+	if (da != nullptr)
+		return(da_header(da)->cap);
+	else
+		return(0);
+}
+
+static inline
+int
+da_next_cap(int len)
 {
 	int cap = 1;
 
@@ -41,53 +77,68 @@ da_buf_cap(int len)
 
 #define da_reserve(da, capacity)					\
 	do{								\
-		(da)->cap = capacity;					\
-		(da)->ptr =						\
-			realloc((da)->ptr,				\
-				(da)->cap * sizeof(*(da)->ptr));	\
+		struct da_header *header;				\
 									\
-		assert((da)->ptr != nullptr);				\
+		if (*(da) == nullptr){					\
+			header = malloc(da_header_offset		\
+					+ sizeof(**(da)) * capacity);	\
+									\
+			assert(header != nullptr);			\
+									\
+			header->len = 0;				\
+		}else{							\
+			header = realloc(da_header(*(da)),		\
+					 da_header_offset		\
+					 + sizeof(**(da)) * capacity);	\
+									\
+			assert(header != nullptr);			\
+		}							\
+									\
+		header->cap = capacity;					\
+									\
+		*(da) = (void *) &header->start;			\
 	}while(0)
 
-#define da_push_items(da, items, item_count)			\
-	do{							\
-		int previous_pos = (da)->len;			\
-		(da)->len += item_count;			\
-								\
-		if((da)->len > (da)->cap)			\
-			da_reserve(da, da_buf_cap((da)->len));	\
-								\
-		memcpy((da)->ptr + previous_pos, items,		\
-		       sizeof(*(da)->ptr) * item_count);	\
+#define da_push_items(da, items, item_count)				\
+	do{								\
+		int len = da_len(*(da));				\
+		int cap = da_cap(*(da));				\
+									\
+		if(len + item_count > cap)				\
+			da_reserve(da, da_next_cap(len + item_count));	\
+									\
+		memcpy(*(da) + len, items,				\
+		       sizeof(**(da)) * item_count);			\
+									\
+		da_header(*(da))->len += item_count;			\
 	}while(0)
 
 #define da_push(da, ...)						\
 	do{								\
-		typeof(*(da)->ptr) items[] = { __VA_ARGS__ };		\
+		typeof(**(da)) items[] = { __VA_ARGS__ };		\
 		int item_count = sizeof(items) / sizeof(items[0]);	\
 		da_push_items(da, items, item_count);			\
 	}while(0)
 
 #define da_pop(da)				\
 	do{					\
-		(da)->len -= 1;			\
+		da_header(*(da))->len -= 1;	\
 	}while(0)
 
 #define da_swap_delete(da, idx)					\
 	do{							\
-		(da)->ptr[idx] = (da)->ptr[(da)->len - 1];	\
+		(*(da))[idx] = (*(da))[da_len(*(da)) - 1];	\
 		da_pop(da);					\
 	}while(0)
 
 #define da_reset(da)				\
 	do{					\
-		if((da)->ptr)			\
-			free((da)->ptr);	\
-		memset(da, 0, sizeof(*(da)));	\
+		if(*(da) != nullptr)		\
+			free(da_header(*(da)));	\
+		*(da) = nullptr;		\
 	}while(0)
 
-#define da_for(it, da)							\
-	for (typeof((da).ptr) it = (da).ptr; it != (da).ptr + (da).len; ++it)
+#define da_for(it, da) for (typeof(da) it = da; it != da + da_len(da); ++it)
 
 struct string_view
 {
@@ -202,9 +253,9 @@ sv_find(struct string_view string, struct string_view substring)
 
 static inline
 struct string_view *
-sv_split_sv(struct string_view string, struct string_view sep, int *count)
+sv_split_sv(struct string_view string, struct string_view sep)
 {
-	struct { struct string_view *ptr; int len; int cap; } strings = {};
+	struct string_view *strings = nullptr;
 
 	while(string.len > 0){
 		int found = sv_find(string, sep);
@@ -217,25 +268,23 @@ sv_split_sv(struct string_view string, struct string_view sep, int *count)
 	}
 
 	/* Shrink to exactly length */
-	da_reserve(&strings, strings.len);
+	da_reserve(&strings, da_len(strings));
 
-	*count = strings.len;
-
-	return(strings.ptr);
+	return(strings);
 }
 
 static inline
 struct string_view *
-sv_split(struct string_view string, char *sep, int *count)
+sv_split(struct string_view string, char *sep)
 {
-	return(sv_split_sv(string, sv(sep), count));
+	return(sv_split_sv(string, sv(sep)));
 }
 
 static inline
 struct string_view *
-sv_split_once_sv(struct string_view string, struct string_view sep, int *count)
+sv_split_once_sv(struct string_view string, struct string_view sep)
 {
-	struct { struct string_view *ptr; int len; int cap; } strings = {};
+	struct string_view *strings = nullptr;
 
 	int found = sv_find(string, sep);
 
@@ -246,16 +295,14 @@ sv_split_once_sv(struct string_view string, struct string_view sep, int *count)
 		da_push(&strings, sv_chop_left(string, found + sep.len));
 	}
 
-	*count = strings.len;
-
-	return(strings.ptr);
+	return(strings);
 }
 
 static inline
 struct string_view *
-sv_split_once(struct string_view string, char *sep, int *count)
+sv_split_once(struct string_view string, char *sep)
 {
-	return(sv_split_once_sv(string, sv(sep), count));
+	return(sv_split_once_sv(string, sv(sep)));
 }
 
 static inline
@@ -294,85 +341,91 @@ sv_save(struct string_view string)
 	return(cstr);
 }
 
-struct string_buffer
+static inline
+int
+sb_len(char *string)
 {
-	char *ptr;
-	int len;
-	int cap;
-};
+	return(da_len(string));
+}
 
 static inline
 struct string_view
-sv_from_sb(struct string_buffer string)
+sv_from_sb(char *string)
 {
-	return((struct string_view){ .ptr = string.ptr, .len = string.len });
+	return((struct string_view){ .ptr = string, .len = sb_len(string) });
+}
+
+static inline
+int
+sb_cap(char *string)
+{
+	return(da_cap(string));
 }
 
 static inline
 void
-sb_reserve(struct string_buffer *string, int cap)
+sb_reserve(char **string, int cap)
 {
 	da_reserve(string, cap);
 }
 
 static inline
 void
-sb_append_sv(struct string_buffer *string, struct string_view other)
+sb_append_sv(char **string, struct string_view other)
 {
 	da_push_items(string, other.ptr, other.len);
 }
 
 static inline
 void
-sb_append(struct string_buffer *string, char *other)
+sb_append(char **string, char *other)
 {
 	sb_append_sv(string, sv(other));
 }
 
 static inline
 void
-sb_terminate(struct string_buffer *string)
+sb_terminate(char **string)
 {
 	sb_append_sv(string, (struct string_view){ .ptr = "", .len = 1 });
 }
 
 static inline
-struct string_buffer
+char *
 sb_from_file(char *path)
 {
 	FILE *f = fopen(path, "rb");
 
 	if(f == nullptr){
 		perror("string_from_file");
-		return((struct string_buffer){});
+		return(nullptr);
 	}
 
 	fseek(f, 0, SEEK_END);
 	int fsize = ftell(f);
 	fseek(f, 0, SEEK_SET);
 
-	char *buf = malloc(fsize);
+	char *buf = nullptr;
+	da_reserve(&buf, fsize);
 	fread(buf, fsize, 1, f);
 
 	fclose(f);
 
-	return((struct string_buffer){ .ptr = buf, .len = fsize, .cap = fsize });
+	return(buf);
 }
 
 static inline
 char *
-sb_save(struct string_buffer string)
+sb_save(char *string)
 {
 	return(sv_save(sv_from_sb(string)));
 }
 
 static inline
 void
-sb_reset(struct string_buffer *string)
+sb_reset(char **string)
 {
-	if(string->ptr)
-		free(string->ptr);
-	memset(string, 0, sizeof(struct string_buffer));
+	da_reset(string);
 }
 
 struct memory_arena
@@ -440,20 +493,30 @@ void ma_free(struct memory_arena arena)
 		munmap(arena.start, ma_size);
 }
 
-#define ma_da_reserve(arena, da, capacity)				\
-	do{								\
-		(da)->cap = capacity;					\
-		(da)->ptr = ma_allocate_n(arena, typeof((da)->ptr[0]), (da)->cap); \
+#define ma_da_reserve(arena, da, capacity)			\
+	do{							\
+		assert(*(da) == nullptr); /* !! */		\
+								\
+		struct da_header *header =			\
+			ma_allocate_impl(			\
+				arena,				\
+				da_header_offset		\
+				+ sizeof(**(da)) * capacity,	\
+				alignof(struct da_header));	\
+								\
+		header->len = 0;				\
+		header->cap = capacity;				\
+		*da = (void *) &header->start;			\
 	}while(0)
 
 static inline
 void
-ma_sb_reserve(struct memory_arena *arena, struct string_buffer *string, int cap)
+ma_sb_reserve(struct memory_arena *arena, char **string, int cap)
 {
 	ma_da_reserve(arena, string, cap);
 }
 
-// TODO: reduce duplication for arena string functions
+/* TODO: reduce duplication for arena string functions */
 
 static inline
 char *
@@ -470,9 +533,9 @@ ma_sv_save(struct memory_arena *arena, struct string_view string)
 static inline
 struct string_view *
 ma_sv_split_sv(struct memory_arena *arena,
-	       struct string_view string, struct string_view sep, int *count)
+	       struct string_view string, struct string_view sep)
 {
-	struct { struct string_view *ptr; int len; int cap; } strings = {};
+	struct string_view *strings = nullptr;
 
 	ma_da_reserve(arena, &strings, sv_count_sv(string, sep) + 1);
 
@@ -486,25 +549,23 @@ ma_sv_split_sv(struct memory_arena *arena,
 		string = sv_chop_left(string, found + sep.len);
 	}
 
-	*count = strings.len;
-
-	return(strings.ptr);
+	return(strings);
 }
 
 static inline
 struct string_view *
 ma_sv_split(struct memory_arena *arena,
-	    struct string_view string, char *sep, int *count)
+	    struct string_view string, char *sep)
 {
-	return(ma_sv_split_sv(arena, string, sv(sep), count));
+	return(ma_sv_split_sv(arena, string, sv(sep)));
 }
 
 static inline
 struct string_view *
 ma_sv_split_once_sv(struct memory_arena *arena,
-		    struct string_view string, struct string_view sep, int *count)
+		    struct string_view string, struct string_view sep)
 {
-	struct { struct string_view *ptr; int len; int cap; } strings = {};
+	struct string_view *strings = nullptr;
 
 	int found = sv_find(string, sep);
 
@@ -517,17 +578,15 @@ ma_sv_split_once_sv(struct memory_arena *arena,
 		da_push(&strings, sv_chop_left(string, found + sep.len));
 	}
 
-	*count = strings.len;
-
-	return(strings.ptr);
+	return(strings);
 }
 
 static inline
 struct string_view *
 ma_sv_split_once(struct memory_arena *arena,
-		 struct string_view string, char *sep, int *count)
+		 struct string_view string, char *sep)
 {
-	return(ma_sv_split_once_sv(arena, string, sv(sep), count));
+	return(ma_sv_split_once_sv(arena, string, sv(sep)));
 }
 
 static inline
