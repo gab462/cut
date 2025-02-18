@@ -193,6 +193,34 @@ sv_chop_left(struct string_view string, int n)
 
 static inline
 bool
+sv_begins_with_sv(struct string_view string, struct string_view substring)
+{
+	return(sv_equal(sv_left(string, substring.len), substring));
+}
+
+static inline
+bool
+sv_begins_with(struct string_view string, char *substring)
+{
+	return(sv_begins_with(string, sv(substring)));
+}
+
+static inline
+bool
+sv_ends_with_sv(struct string_view string, struct string_view substring)
+{
+	return(sv_equal(sv_right(string, substring.len), substring));
+}
+
+static inline
+bool
+sv_ends_with(struct string_view string, char *substring)
+{
+	return(sv_ends_with(string, sv(substring)));
+}
+
+static inline
+bool
 char_is_whitespace(char c)
 {
 	return(c == ' ' || c == '\t' || c == '\n' || c == '\r');
