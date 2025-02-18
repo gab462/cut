@@ -142,7 +142,7 @@ da_next_cap(int len)
 
 struct string_view
 {
-	char *ptr;
+	char *start;
 	int len;
 };
 
@@ -150,7 +150,7 @@ static inline
 struct string_view
 sv(char *string)
 {
-	return((struct string_view){ .ptr = string, .len = strlen(string) });
+	return((struct string_view){ .start = string, .len = strlen(string) });
 }
 
 static inline
@@ -160,35 +160,35 @@ sv_equal(struct string_view a, struct string_view b)
 	if(a.len != b.len)
 		return(false);
 
-	return(memcmp(a.ptr, b.ptr, a.len) == 0);
+	return(memcmp(a.start, b.start, a.len) == 0);
 }
 
 static inline
 struct string_view
 sv_right(struct string_view string, int n)
 {
-	return((struct string_view){ string.ptr + string.len - n, n });
+	return((struct string_view){ string.start + string.len - n, n });
 }
 
 static inline
 struct string_view
 sv_left(struct string_view string, int n)
 {
-	return((struct string_view){ string.ptr, n });
+	return((struct string_view){ string.start, n });
 }
 
 static inline
 struct string_view
 sv_chop_right(struct string_view string, int n)
 {
-	return((struct string_view){ string.ptr, string.len - n });
+	return((struct string_view){ string.start, string.len - n });
 }
 
 static inline
 struct string_view
 sv_chop_left(struct string_view string, int n)
 {
-	return((struct string_view){ string.ptr + n, string.len - n });
+	return((struct string_view){ string.start + n, string.len - n });
 }
 
 static inline
@@ -203,7 +203,7 @@ struct string_view
 sv_trim_left(struct string_view string)
 {
 	for(int i = 0; i < string.len; ++i){
-		if(!char_is_whitespace(string.ptr[i]))
+		if(!char_is_whitespace(string.start[i]))
 			return(sv_chop_left(string, i));
 	}
 
@@ -215,7 +215,7 @@ struct string_view
 sv_trim_right(struct string_view string)
 {
 	for(int i = 0; i < string.len; ++i){
-		if(!char_is_whitespace(string.ptr[string.len - 1 - i]))
+		if(!char_is_whitespace(string.start[string.len - 1 - i]))
 			return(sv_chop_right(string, i));
 	}
 
@@ -239,13 +239,13 @@ sv_find(struct string_view string, struct string_view substring)
 	int match = 0;
 
 	for(int i = 0; i < string.len; ++i){
-		if(string.ptr[i] == substring.ptr[match]){
+		if(string.start[i] == substring.start[match]){
 			++match;
 
 			if(match == substring.len)
 				return(i + 1 - match);
 		}else
-			match = (string.ptr[i] == substring.ptr[0]) ? 1 : 0;
+			match = (string.start[i] == substring.start[0]) ? 1 : 0;
 	}
 
 	return(-1);
@@ -335,7 +335,7 @@ sv_save(struct string_view string)
 	char *cstr = malloc(string.len + 1);
 	assert(cstr != nullptr);
 
-	memcpy(cstr, string.ptr, string.len);
+	memcpy(cstr, string.start, string.len);
 	cstr[string.len] = '\0';
 
 	return(cstr);
@@ -352,7 +352,7 @@ static inline
 struct string_view
 sv_from_sb(char *string)
 {
-	return((struct string_view){ .ptr = string, .len = sb_len(string) });
+	return((struct string_view){ .start = string, .len = sb_len(string) });
 }
 
 static inline
@@ -373,7 +373,7 @@ static inline
 void
 sb_append_sv(char **string, struct string_view other)
 {
-	da_push_items(string, other.ptr, other.len);
+	da_push_items(string, other.start, other.len);
 }
 
 static inline
@@ -387,7 +387,7 @@ static inline
 void
 sb_terminate(char **string)
 {
-	sb_append_sv(string, (struct string_view){ .ptr = "", .len = 1 });
+	sb_append_sv(string, (struct string_view){ .start = "", .len = 1 });
 }
 
 static inline
@@ -524,7 +524,7 @@ ma_sv_save(struct memory_arena *arena, struct string_view string)
 {
 	char *cstr = ma_allocate_n(arena, char, string.len + 1);
 
-	memcpy(cstr, string.ptr, string.len);
+	memcpy(cstr, string.start, string.len);
 	cstr[string.len] = '\0';
 
 	return(cstr);
@@ -609,7 +609,7 @@ ma_sv_from_file(struct memory_arena *arena, char *path)
 
 	fclose(f);
 
-	return((struct string_view){ .ptr = buf, .len = fsize });
+	return((struct string_view){ .start = buf, .len = fsize });
 }
 
 #endif
