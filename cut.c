@@ -202,7 +202,7 @@ static inline
 bool
 sv_begins_with(struct string_view string, char *substring)
 {
-	return(sv_begins_with(string, sv(substring)));
+	return(sv_begins_with_sv(string, sv(substring)));
 }
 
 static inline
@@ -216,7 +216,7 @@ static inline
 bool
 sv_ends_with(struct string_view string, char *substring)
 {
-	return(sv_ends_with(string, sv(substring)));
+	return(sv_ends_with_sv(string, sv(substring)));
 }
 
 static inline
