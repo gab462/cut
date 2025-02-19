@@ -489,7 +489,8 @@ ma_align(struct memory_arena *arena, int alignment)
 }
 
 static inline
-void *ma_allocate_impl(struct memory_arena *arena, int size, int alignment)
+void *
+ma_allocate_impl(struct memory_arena *arena, int size, int alignment)
 {
 	if(arena->start == nullptr)
 		ma_reset(arena);
@@ -543,8 +544,6 @@ ma_sb_reserve(struct memory_arena *arena, char **string, int cap)
 {
 	ma_da_reserve(arena, string, cap);
 }
-
-/* TODO: reduce duplication for arena string functions */
 
 static inline
 char *
@@ -632,12 +631,16 @@ ma_sv_from_file(struct memory_arena *arena, char *path)
 	int fsize = ftell(f);
 	fseek(f, 0, SEEK_SET);
 
-	char *buf = ma_allocate_n(arena, char, fsize);
-	fread(buf, fsize, 1, f);
+	struct string_view buf = {
+		.start = ma_allocate_n(arena, char, fsize),
+		.len = fsize
+	};
+
+	fread(buf.start, fsize, 1, f);
 
 	fclose(f);
 
-	return((struct string_view){ .start = buf, .len = fsize });
+	return(buf);
 }
 
 #endif
