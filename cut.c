@@ -44,7 +44,7 @@ static inline
 int
 da_len(void *da)
 {
-	if (da != nullptr)
+	if(da != nullptr)
 		return(da_header(da)->len);
 	else
 		return(0);
@@ -54,7 +54,7 @@ static inline
 int
 da_cap(void *da)
 {
-	if (da != nullptr)
+	if(da != nullptr)
 		return(da_header(da)->cap);
 	else
 		return(0);
@@ -64,7 +64,7 @@ da_cap(void *da)
 	do{								\
 		struct da_header *header;				\
 									\
-		if (*(da) == nullptr){					\
+		if(*(da) == nullptr){					\
 			header = malloc(sizeof(struct da_header)	\
 					+ sizeof(**(da)) * capacity);	\
 									\
@@ -91,7 +91,7 @@ da_cap(void *da)
 									\
 		if(len + item_count > cap){				\
 			cap = cap == 0 ? 1 : cap;			\
-			while(cap < len) cap *= 2;			\
+			while(cap < len + item_count) cap *= 2;		\
 			da_reserve(da, cap);				\
 		}							\
 									\
