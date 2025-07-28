@@ -84,21 +84,21 @@ da_cap(void *da)
 		*(da) = (void *) header->start;				\
 	}while(0)
 
-#define da_push_items(da, items, item_count)				\
-	do{								\
-		int len = da_len(*(da));				\
-		int cap = da_cap(*(da));				\
-									\
-		if(len + item_count > cap){				\
-			cap = cap == 0 ? 1 : cap;			\
-			while(cap < len + item_count) cap *= 2;		\
-			da_reserve(da, cap);				\
-		}							\
-									\
-		memcpy(*(da) + len, items,				\
-		       sizeof(**(da)) * item_count);			\
-									\
-		da_header(*(da))->len += item_count;			\
+#define da_push_items(da, items, item_count)			\
+	do{							\
+		int len = da_len(*(da));			\
+		int cap = da_cap(*(da));			\
+								\
+		if(len + item_count > cap){			\
+			cap = cap == 0 ? 1 : cap;		\
+			while(cap < len + item_count) cap *= 2;	\
+			da_reserve(da, cap);			\
+		}						\
+								\
+		memcpy(*(da) + len, items,			\
+		       sizeof(**(da)) * item_count);		\
+								\
+		da_header(*(da))->len += item_count;		\
 	}while(0)
 
 #define da_push(da, ...)						\
