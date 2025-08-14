@@ -21,6 +21,7 @@
 #ifndef INCLUDE_CUT_C
 #define INCLUDE_CUT_C
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,7 +31,7 @@
 struct da_header
 {
 	int len, cap;
-	max_align_t start[0];
+	long double start[0];
 };
 
 static inline
@@ -44,7 +45,7 @@ static inline
 int
 da_len(void *da)
 {
-	if(da != nullptr)
+	if(da != NULL)
 		return(da_header(da)->len);
 	else
 		return(0);
@@ -54,7 +55,7 @@ static inline
 int
 da_cap(void *da)
 {
-	if(da != nullptr)
+	if(da != NULL)
 		return(da_header(da)->cap);
 	else
 		return(0);
@@ -64,11 +65,11 @@ da_cap(void *da)
 	do{								\
 		struct da_header *header;				\
 									\
-		if(*(da) == nullptr){					\
+		if(*(da) == NULL){					\
 			header = malloc(sizeof(struct da_header)	\
 					+ sizeof(**(da)) * capacity);	\
 									\
-			assert(header != nullptr);			\
+			assert(header != NULL);				\
 									\
 			header->len = 0;				\
 		}else{							\
@@ -76,7 +77,7 @@ da_cap(void *da)
 					 sizeof(struct da_header)	\
 					 + sizeof(**(da)) * capacity);	\
 									\
-			assert(header != nullptr);			\
+			assert(header != NULL);				\
 		}							\
 									\
 		header->cap = capacity;					\
@@ -103,7 +104,7 @@ da_cap(void *da)
 
 #define da_push(da, ...)						\
 	do{								\
-		typeof(**(da)) items[] = { __VA_ARGS__ };		\
+		__typeof__(**(da)) items[] = { __VA_ARGS__ };		\
 		int item_count = sizeof(items) / sizeof(items[0]);	\
 		da_push_items(da, items, item_count);			\
 	}while(0)
@@ -121,18 +122,18 @@ da_cap(void *da)
 
 #define da_reset(da)				\
 	do{					\
-		if(*(da) != nullptr)		\
+		if(*(da) != NULL)		\
 			free(da_header(*(da)));	\
-		*(da) = nullptr;		\
+		*(da) = NULL;			\
 	}while(0)
 
-#define da_for(it, da) for(typeof(da) it = (da); it != (da) + da_len(da); ++it)
+#define da_for(it, da) for(__typeof__(da) it = (da); it != (da) + da_len(da); ++it)
 
 #define sb_append(sb, str) da_push_items(sb, str, strlen(str))
 
 #define sb_appendf(sb, fmt, ...)						\
 	do{									\
-		int size = snprintf(nullptr, 0, fmt, __VA_ARGS__);		\
+		int size = snprintf(NULL, 0, fmt, __VA_ARGS__);			\
 		if(da_len(*(sb)) + size + 1 > da_cap(*(sb))) 			\
 			da_reserve(sb, da_len(*(sb)) + size + 1);		\
 		snprintf(*(sb) + da_len(*(sb)), size + 1, fmt, __VA_ARGS__);	\
