@@ -17,7 +17,7 @@ static inline
 char *
 http_get(char *url)
 {
-	char *sb = nullptr;
+	char *sb = NULL;
 	CURL *curl = curl_easy_init();
 
 	curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -39,7 +39,7 @@ static inline
 char *
 http_post(char *url, char *data)
 {
-	char *sb = nullptr;
+	char *sb = NULL;
 	CURL *curl = curl_easy_init();
 
 	curl_easy_setopt(curl, CURLOPT_URL, url);

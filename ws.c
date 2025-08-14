@@ -78,7 +78,7 @@ char *
 ws_recv(CURL *curl)
 {
 	char buf[4096];
-	char *sb = nullptr;
+	char *sb = NULL;
 
 	for(;;){
 		const struct curl_ws_frame *meta;
@@ -94,7 +94,7 @@ ws_recv(CURL *curl)
 		}else{
 			fprintf(stderr, "ws_recv() failed: %s\n", curl_easy_strerror(res));
 			da_reset(&sb);
-			return(nullptr);
+			return(NULL);
 		}
 	}
 
