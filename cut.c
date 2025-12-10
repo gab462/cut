@@ -175,22 +175,41 @@ q_tail(void *q)
         return(0);
 }
 
-#define q_grow(q)                               \
-    do{                                         \
-        int old_cap = da_cap(*(q));             \
-                                                \
-        da_reserve(q, (old_cap + 1) * 2);       \
-                                                \
-        int growth = da_cap(*(q)) - old_cap;    \
-        int head = q_head(*(q));                \
-                                                \
-        if(q_tail(*(q)) < head){                \
-            memmove(*(q) + head + growth,       \
-                    *(q) + head,                \
-                    old_cap - head);            \
-                                                \
-            q_header(*(q))->head += growth;     \
-        }                                       \
+#define q_reserve(q, capacity)                          \
+    do{                                                 \
+        struct q_header *header;                        \
+        int head = q_head(*(q));                        \
+        int tail = q_tail(*(q));                        \
+                                                        \
+        header = realloc(q_header(*(q)),                \
+                         sizeof(struct q_header)        \
+                         + sizeof(**(q)) * capacity);   \
+                                                        \
+        assert(header != NULL);                         \
+                                                        \
+        header->cap = capacity;                         \
+        header->head = head;                            \
+        head->tail = tail;                              \
+                                                        \
+        *(q) = (void *) header->start;                  \
+    }while(0)
+
+#define q_grow(q)                                   \
+    do{                                             \
+        int old_cap = da_cap(*(q));                 \
+        int head = q_head(*(q));                    \
+                                                    \
+        q_reserve(q, (old_cap + 1) * 2);            \
+                                                    \
+        int growth = da_cap(*(q)) - old_cap;        \
+                                                    \
+        if(q_tail(*(q)) < head){                    \
+            memmove(*(q) + head + growth,           \
+                    *(q) + head,                    \
+                    old_cap - head);                \
+                                                    \
+            q_header(*(q))->head += growth;         \
+        }                                           \
     }while(0)
 
 #define q_enq(q, item)                                              \
@@ -218,6 +237,7 @@ q_tail(void *q)
         }                                       \
     }while(0)
 
-#define defer(exp) for(bool done = false; !done; ({exp;}), done = true)
+#define with(start, end) for(bool done = ({start;}, false); !done; ({end;}), done = true)
+#define defer(exp) with(, exp)
 
 #endif
