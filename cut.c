@@ -138,6 +138,78 @@ da_cap(void *da)
         da_header(*(sb))->len += size;                                  \
     }while(0)
 
+struct q_header
+{
+    int head;
+    int tail;
+    struct da_header da;
+};
+
+static inline
+struct q_header *
+q_header(void *q)
+{
+    if(q != NULL)
+        return(q - sizeof(struct q_header));
+    else
+        return(NULL);
+}
+
+static inline
+int
+q_head(void *q)
+{
+    if(q != NULL)
+        return(q_header(q)->head);
+    else
+        return(0);
+}
+
+static inline
+int
+q_tail(void *q)
+{
+    if(q != NULL)
+        return(q_header(q)->tail);
+    else
+        return(0);
+}
+
+#define q_grow(q)                               \
+    do{                                         \
+        int old_cap = da_cap(*(q));             \
+                                                \
+        da_reserve(q, (old_cap + 1) * 2);       \
+                                                \
+        int growth = da_cap(*(q)) - old_cap;    \
+        int head = q_head(*(q));                \
+                                                \
+        if(q_tail(*(q)) < head){                \
+            memmove(*(q) + head + growth,       \
+                    *(q) + head,                \
+                    old_cap - head);            \
+                                                \
+            q_header(*(q))->head += growth;     \
+        }                                       \
+    }while(0)
+
+#define q_enq(q, item)                                              \
+    do{                                                             \
+        if(da_cap(*(q)) == 0                                        \
+           || (q_tail(*(q)) + 1) % da_cap(*(q)) == q_head(*(q)))    \
+            q_grow(q);                                              \
+                                                                    \
+        (*(q))[q_tail(*(q))] = item;                                \
+        q_header(*(q))->tail = (q_tail(*(q)) + 1) % da_cap(*(q));   \
+    }while(0)
+
+#define q_deq(q, item)                                                  \
+    (                                                                   \
+        assert(*(q) != NULL),                                           \
+        q_header(*(q))->head = (q_head(*(q)) + 1) % da_cap(*(q)),       \
+        (*(q))[q_head(*(q)) > 0 ? q_head(*(q)) - 1 : da_cap(*(q)) - 1]  \
+    )
+
 #define defer(exp) for(bool done = false; !done; ({exp;}), done = true)
 
 #endif
