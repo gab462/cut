@@ -210,6 +210,14 @@ q_tail(void *q)
         (*(q))[q_head(*(q)) > 0 ? q_head(*(q)) - 1 : da_cap(*(q)) - 1]  \
     )
 
+#define q_reset(q)                              \
+    do{                                         \
+        if(*(q) != NULL){                       \
+            free(q_header(*(q)));               \
+            *(q) = NULL;                        \
+        }                                       \
+    }while(0)
+
 #define defer(exp) for(bool done = false; !done; ({exp;}), done = true)
 
 #endif
