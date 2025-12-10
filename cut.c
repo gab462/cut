@@ -31,14 +31,17 @@
 struct da_header
 {
     int len, cap;
-    maxalign_t start[];
+    max_align_t start[];
 };
 
 static inline
 struct da_header *
 da_header(void *da)
 {
-    return(da - sizeof(struct da_header));
+    if(da != NULL)
+        return(da - sizeof(struct da_header));
+    else
+        return(NULL);
 }
 
 static inline
@@ -61,45 +64,32 @@ da_cap(void *da)
         return(0);
 }
 
-#define da_reserve(da, capacity)                            \
-    do{                                                     \
-        struct da_header *header;                           \
-                                                            \
-        if(*(da) == NULL){                                  \
-            header = malloc(sizeof(struct da_header)        \
-                            + sizeof(**(da)) * capacity);   \
-                                                            \
-            assert(header != NULL);                         \
-                                                            \
-            header->len = 0;                                \
-        }else{                                              \
-            header = realloc(da_header(*(da)),              \
-                             sizeof(struct da_header)       \
-                             + sizeof(**(da)) * capacity);  \
-                                                            \
-            assert(header != NULL);                         \
-        }                                                   \
-                                                            \
-        header->cap = capacity;                             \
-                                                            \
-        *(da) = (void *) header->start;                     \
+#define da_reserve(da, capacity)                        \
+    do{                                                 \
+        struct da_header *header;                       \
+                                                        \
+        header = realloc(da_header(*(da)),              \
+                         sizeof(struct da_header)       \
+                         + sizeof(**(da)) * capacity);  \
+                                                        \
+        assert(header != NULL);                         \
+                                                        \
+        header->cap = capacity;                         \
+                                                        \
+        *(da) = (void *) header->start;                 \
     }while(0)
 
-#define da_push_items(da, items, item_count)        \
-    do{                                             \
-        int len = da_len(*(da));                    \
-        int cap = da_cap(*(da));                    \
-                                                    \
-        if(len + item_count > cap){                 \
-            cap = cap == 0 ? 1 : cap;               \
-            while(cap < len + item_count) cap *= 2; \
-            da_reserve(da, cap);                    \
-        }                                           \
-                                                    \
-        memcpy(*(da) + len, items,                  \
-               sizeof(**(da)) * item_count);        \
-                                                    \
-        da_header(*(da))->len += item_count;        \
+#define da_push_items(da, items, item_count)                        \
+    do{                                                             \
+        int len = da_len(*(da));                                    \
+        int cap = da_cap(*(da));                                    \
+                                                                    \
+        if(len + item_count > cap)                                  \
+            da_reserve(da, (len + item_count) * 2);                 \
+                                                                    \
+        memcpy(*(da) + len, items, sizeof(**(da)) * item_count);    \
+                                                                    \
+        da_header(*(da))->len = len + item_count;                   \
     }while(0)
 
 #define da_push(da, ...)                                    \
@@ -111,20 +101,25 @@ da_cap(void *da)
 
 #define da_pop(da)                              \
     do{                                         \
+        assert(*(da) != NULL);                  \
+                                                \
         da_header(*(da))->len -= 1;             \
     }while(0)
 
 #define da_swap_delete(da, idx)                     \
     do{                                             \
+        assert(*(da) != NULL);                      \
+                                                    \
         (*(da))[idx] = (*(da))[da_len(*(da)) - 1];  \
         da_pop(da);                                 \
     }while(0)
 
 #define da_reset(da)                            \
     do{                                         \
-        if(*(da) != NULL)                       \
+        if(*(da) != NULL){                      \
             free(da_header(*(da)));             \
-        *(da) = NULL;                           \
+            *(da) = NULL;                       \
+        }                                       \
     }while(0)
 
 #define da_for(it, da) for(__typeof__(da) it = (da); it != (da) + da_len(da); ++it)
@@ -134,9 +129,12 @@ da_cap(void *da)
 #define sb_appendf(sb, fmt, ...)                                        \
     do{                                                                 \
         int size = snprintf(NULL, 0, fmt, __VA_ARGS__);                 \
+                                                                        \
         if(da_len(*(sb)) + size + 1 > da_cap(*(sb)))                    \
             da_reserve(sb, da_len(*(sb)) + size + 1);                   \
+                                                                        \
         snprintf(*(sb) + da_len(*(sb)), size + 1, fmt, __VA_ARGS__);    \
+                                                                        \
         da_header(*(sb))->len += size;                                  \
     }while(0)
 
