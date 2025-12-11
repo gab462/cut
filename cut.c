@@ -177,43 +177,43 @@ q_tail(void *q)
         return(0);
 }
 
-#define q_reserve(q, new_capacity)                      \
-    do{                                                 \
-        struct q_header *header;                        \
-        bool init = *(q) == NULL;                       \
-                                                        \
-        header = realloc(q_header(*(q)),                \
-                         sizeof(struct q_header)        \
-                         + sizeof(**(q)) * capacity);   \
-                                                        \
-        assert(header != NULL);                         \
-                                                        \
-        header->da.capacity = new_capacity;             \
-                                                        \
-        if (init) {                                     \
-            header->head = 0;                           \
-            header->tail = 0;                           \
-        }                                               \
-                                                        \
-        *(q) = (void *) header->da.start;               \
+#define q_reserve(q, new_capacity)                          \
+    do{                                                     \
+        struct q_header *header;                            \
+        bool init = *(q) == NULL;                           \
+                                                            \
+        header = realloc(q_header(*(q)),                    \
+                         sizeof(struct q_header)            \
+                         + sizeof(**(q)) * new_capacity);   \
+                                                            \
+        assert(header != NULL);                             \
+                                                            \
+        header->da.capacity = new_capacity;                 \
+                                                            \
+        if (init) {                                         \
+            header->head = 0;                               \
+            header->tail = 0;                               \
+        }                                                   \
+                                                            \
+        *(q) = (void *) header->da.start;                   \
     }while(0)
 
-#define q_grow(q)                                   \
-    do{                                             \
-        int old_cap = da_cap(*(q));                 \
-        int head = q_head(*(q));                    \
-                                                    \
-        q_reserve(q, (old_cap + 1) * 2);            \
-                                                    \
-        int growth = da_cap(*(q)) - old_cap;        \
-                                                    \
-        if(q_tail(*(q)) < head){                    \
-            memmove(*(q) + head + growth,           \
-                    *(q) + head,                    \
-                    old_cap - head);                \
-                                                    \
-            q_header(*(q))->head += growth;         \
-        }                                           \
+#define q_grow(q)                                       \
+    do{                                                 \
+        int old_cap = da_cap(*(q));                     \
+        int head = q_head(*(q));                        \
+                                                        \
+        q_reserve(q, (old_cap + 1) * 2);                \
+                                                        \
+        int growth = da_cap(*(q)) - old_cap;            \
+                                                        \
+        if(q_tail(*(q)) < head){                        \
+            memmove(*(q) + head + growth,               \
+                    *(q) + head,                        \
+                    (old_cap - head) * sizeof(**(q)));  \
+                                                        \
+            q_header(*(q))->head += growth;             \
+        }                                               \
     }while(0)
 
 #define q_enqueue(q, item)                                          \
