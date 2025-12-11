@@ -82,9 +82,11 @@ da_cap(void *da)
 
 #define da_push_items(da, items, item_count)                        \
     do{                                                             \
+        assert(item_count != 0);                                    \
+                                                                    \
         int length = da_len(*(da));                                 \
                                                                     \
-        if(length + item_count > da_cap(*(da)))                     \
+        if((int) (length + item_count) > da_cap(*(da)))             \
             da_reserve(da, (length + item_count) * 2);              \
                                                                     \
         memcpy(*(da) + length, items, sizeof(**(da)) * item_count); \
@@ -125,16 +127,18 @@ da_cap(void *da)
 
 #define sb_append(sb, str) da_push_items(sb, str, strlen(str))
 
-#define sb_appendf(sb, fmt, ...)                                        \
-    do{                                                                 \
-        int size = snprintf(NULL, 0, fmt, __VA_ARGS__);                 \
-                                                                        \
-        if(da_len(*(sb)) + size + 1 > da_cap(*(sb)))                    \
-            da_reserve(sb, (da_len(*(sb)) + size + 1) * 2);             \
-                                                                        \
-        snprintf(*(sb) + da_len(*(sb)), size + 1, fmt, __VA_ARGS__);    \
-                                                                        \
-        da_header(*(sb))->length += size;                               \
+#define sb_appendf(sb, fmt, ...)                                \
+    do{                                                         \
+        int length = da_len(*(sb));                             \
+        int size = snprintf(NULL, 0, fmt, __VA_ARGS__);         \
+        assert(size != 0);                                      \
+                                                                \
+        if(length + size + 1 > da_cap(*(sb)))                   \
+            da_reserve(sb, (length + size) * 2);                \
+                                                                \
+        snprintf(*(sb) + length, size + 1, fmt, __VA_ARGS__);   \
+                                                                \
+        da_header(*(sb))->length += size;                       \
     }while(0)
 
 struct q_header

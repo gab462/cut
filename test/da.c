@@ -39,6 +39,9 @@ main(void)
     }
     assert(i == 5);
 
+    da_reset(&numbers);
+    assert(numbers == NULL);
+
     printf("All tests passed.\n");
 
     return(0);
