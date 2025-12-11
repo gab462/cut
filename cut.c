@@ -83,9 +83,8 @@ da_cap(void *da)
 #define da_push_items(da, items, item_count)                        \
     do{                                                             \
         int len = da_len(*(da));                                    \
-        int cap = da_cap(*(da));                                    \
                                                                     \
-        if(len + item_count > cap)                                  \
+        if(len + item_count > da_cap(*(da)))                        \
             da_reserve(da, (len + item_count) * 2);                 \
                                                                     \
         memcpy(*(da) + len, items, sizeof(**(da)) * item_count);    \
@@ -131,7 +130,7 @@ da_cap(void *da)
         int size = snprintf(NULL, 0, fmt, __VA_ARGS__);                 \
                                                                         \
         if(da_len(*(sb)) + size + 1 > da_cap(*(sb)))                    \
-            da_reserve(sb, da_len(*(sb)) + size + 1);                   \
+            da_reserve(sb, (da_len(*(sb)) + size + 1) * 2);             \
                                                                         \
         snprintf(*(sb) + da_len(*(sb)), size + 1, fmt, __VA_ARGS__);    \
                                                                         \
@@ -292,8 +291,8 @@ chan_header(void *chan)
         cnd_signal(&chan_header(*(chan))->has_item);    \
     }while(0)
 
-#define chan_get(chan, out)                             \
-    do{                                                 \
+#define chan_get(chan)                                  \
+    ({                                                  \
         assert(*(chan) != NULL);                        \
                                                         \
         mtx_lock(&chan_header(*(chan))->mutex);         \
@@ -302,10 +301,12 @@ chan_header(void *chan)
             cnd_wait(&chan_header(*(chan))->has_item,   \
                      &chan_header(*(chan))->mutex);     \
                                                         \
-        *(out) = q_dequeue(*(chan));                        \
+        __typeof__(**(chan)) out = q_dequeue(*(chan));  \
                                                         \
         mtx_unlock(&chan_header(*(chan))->mutex);       \
-    }while(0)
+                                                        \
+        out;                                            \
+    })
 
 #define chan_reset(chan)                                    \
     do{                                                     \
