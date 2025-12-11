@@ -25,8 +25,9 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <stdio.h>
+#include <assert.h>
+#include <threads.h>
 
 struct da_header
 {
@@ -140,8 +141,7 @@ da_cap(void *da)
 
 struct q_header
 {
-    int head;
-    int tail;
+    int head, tail;
     struct da_header da;
 };
 
@@ -180,6 +180,7 @@ q_tail(void *q)
         struct q_header *header;                        \
         int head = q_head(*(q));                        \
         int tail = q_tail(*(q));                        \
+        bool init = *(q) == NULL;                       \
                                                         \
         header = realloc(q_header(*(q)),                \
                          sizeof(struct q_header)        \
@@ -187,11 +188,14 @@ q_tail(void *q)
                                                         \
         assert(header != NULL);                         \
                                                         \
-        header->cap = capacity;                         \
-        header->head = head;                            \
-        head->tail = tail;                              \
+        header->da.cap = capacity;                      \
                                                         \
-        *(q) = (void *) header->start;                  \
+        if (init) {                                     \
+            header->head = 0;                           \
+            header->tail = 0;                           \
+        }                                               \
+                                                        \
+        *(q) = (void *) header->da.start;               \
     }while(0)
 
 #define q_grow(q)                                   \
@@ -238,6 +242,84 @@ q_tail(void *q)
     }while(0)
 
 #define with(start, end) for(bool done = ({start;}, false); !done; ({end;}), done = true)
-#define defer(exp) with(, exp)
+#define defer(exp) with(0, exp)
+
+struct chan_header
+{
+    mtx_t mutex;
+    cnd_t has_item;
+    struct q_header q;
+};
+
+static inline
+struct chan_header *
+chan_header(void *chan)
+{
+    if(chan != NULL)
+        return(chan - sizeof(struct chan_header));
+    else
+        return(NULL);
+}
+
+#define chan_reserve(chan, capacity)                        \
+    do{                                                     \
+        struct chan_header *header;                         \
+        int head = chan_head(*(chan));                      \
+        int tail = chan_tail(*(chan));                      \
+        bool init = *(chan) == NULL;                        \
+                                                            \
+        header = realloc(chan_header(*(chan)),              \
+                         sizeof(struct chan_header)         \
+                         + sizeof(**(chan)) * capacity);    \
+                                                            \
+        assert(header != NULL);                             \
+                                                            \
+        header->q.da.cap = capacity;                        \
+                                                            \
+        if(init){                                           \
+            header->q.head = head;                          \
+            header->q.tail = tail;                          \
+            mtx_init(&header->mutex);                       \
+            cnd_init(&header->has_item);                    \
+        }                                                   \
+                                                            \
+        *(chan) = (void *) header->q.da.start;              \
+    }while(0)
+
+#define chan_send(chan, item)                           \
+    do{                                                 \
+        assert(*(chan) != NULL);                        \
+                                                        \
+        mtx_lock(&chan_header(*(chan))->mutex);         \
+        q_enq(*(chan), item);                           \
+        mtx_unlock(&chan_header(*(chan))->mutex);       \
+                                                        \
+        cnd_signal(&chan_header(*(chan))->has_item);    \
+    }while(0)
+
+#define chan_recv(chan, out)                            \
+    do{                                                 \
+        assert(*(chan) != NULL);                        \
+                                                        \
+        mtx_lock(&chan_header(*(chan))->mutex);         \
+                                                        \
+        while(q_head(*(chan)) == q_tail(*(chan)))       \
+            cnd_wait(&chan_header(*(chan))->has_item,   \
+                     &chan_header(*(chan))->mutex);     \
+                                                        \
+        *(out) = q_deq(*(chan));                        \
+                                                        \
+        mtx_unlock(&chan_header(*(chan))->mutex);       \
+    }while(0)
+
+#define chan_reset(chan)                                    \
+    do{                                                     \
+        if(*(chan) != NULL){                                \
+            mtx_destroy(&chan_header(*(chan))->mutex);      \
+            cnd_destroy(&chan_header(*(chan))->has_item);   \
+            free(chan_header(*(chan)));                     \
+            *(chan) = NULL;                                 \
+        }                                                   \
+    }while(0)
 
 #endif
