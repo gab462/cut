@@ -27,11 +27,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
-#include <threads.h>
+#include <pthread.h>
 
 struct da_header
 {
-    int len, cap;
+    int length, capacity;
     max_align_t start[];
 };
 
@@ -50,7 +50,7 @@ int
 da_len(void *da)
 {
     if(da != NULL)
-        return(da_header(da)->len);
+        return(da_header(da)->length);
     else
         return(0);
 }
@@ -60,36 +60,36 @@ int
 da_cap(void *da)
 {
     if(da != NULL)
-        return(da_header(da)->cap);
+        return(da_header(da)->capacity);
     else
         return(0);
 }
 
-#define da_reserve(da, capacity)                        \
-    do{                                                 \
-        struct da_header *header;                       \
-                                                        \
-        header = realloc(da_header(*(da)),              \
-                         sizeof(struct da_header)       \
-                         + sizeof(**(da)) * capacity);  \
-                                                        \
-        assert(header != NULL);                         \
-                                                        \
-        header->cap = capacity;                         \
-                                                        \
-        *(da) = (void *) header->start;                 \
+#define da_reserve(da, new_capacity)                        \
+    do{                                                     \
+        struct da_header *header;                           \
+                                                            \
+        header = realloc(da_header(*(da)),                  \
+                         sizeof(struct da_header)           \
+                         + sizeof(**(da)) * new_capacity);  \
+                                                            \
+        assert(header != NULL);                             \
+                                                            \
+        header->capacity = new_capacity;                    \
+                                                            \
+        *(da) = (void *) header->start;                     \
     }while(0)
 
 #define da_push_items(da, items, item_count)                        \
     do{                                                             \
-        int len = da_len(*(da));                                    \
+        int length = da_len(*(da));                                 \
                                                                     \
-        if(len + item_count > da_cap(*(da)))                        \
-            da_reserve(da, (len + item_count) * 2);                 \
+        if(length + item_count > da_cap(*(da)))                     \
+            da_reserve(da, (length + item_count) * 2);              \
                                                                     \
-        memcpy(*(da) + len, items, sizeof(**(da)) * item_count);    \
+        memcpy(*(da) + length, items, sizeof(**(da)) * item_count); \
                                                                     \
-        da_header(*(da))->len = len + item_count;                   \
+        da_header(*(da))->length = length + item_count;             \
     }while(0)
 
 #define da_push(da, ...)                                    \
@@ -102,16 +102,16 @@ da_cap(void *da)
 #define da_pop(da)                              \
     (                                           \
         assert(*(da) != NULL),                  \
-        da_header(*(da))->len -= 1,             \
+        da_header(*(da))->length -= 1,          \
         (*(da))[da_len(*(da))]                  \
     )
 
 #define da_swap_delete(da, idx)                     \
-    (                                               \
-        assert(*(da) != NULL),                      \
-        (*(da))[idx] = (*(da))[da_len(*(da)) - 1],  \
-        da_pop(da)                                  \
-    )
+    do{                                             \
+        assert(*(da) != NULL);                      \
+        (*(da))[idx] = (*(da))[da_len(*(da)) - 1];  \
+        da_pop(da);                                 \
+    }while(0)
 
 #define da_reset(da)                            \
     do{                                         \
@@ -134,7 +134,7 @@ da_cap(void *da)
                                                                         \
         snprintf(*(sb) + da_len(*(sb)), size + 1, fmt, __VA_ARGS__);    \
                                                                         \
-        da_header(*(sb))->len += size;                                  \
+        da_header(*(sb))->length += size;                               \
     }while(0)
 
 struct q_header
@@ -173,7 +173,7 @@ q_tail(void *q)
         return(0);
 }
 
-#define q_reserve(q, capacity)                          \
+#define q_reserve(q, new_capacity)                      \
     do{                                                 \
         struct q_header *header;                        \
         bool init = *(q) == NULL;                       \
@@ -184,7 +184,7 @@ q_tail(void *q)
                                                         \
         assert(header != NULL);                         \
                                                         \
-        header->da.cap = capacity;                      \
+        header->da.capacity = new_capacity;             \
                                                         \
         if (init) {                                     \
             header->head = 0;                           \
@@ -237,13 +237,10 @@ q_tail(void *q)
         }                                       \
     }while(0)
 
-#define with(start, end) for(bool done = ((start), false); !done; (end), done = true)
-#define defer(exp) with(0, exp)
-
 struct chan_header
 {
-    mtx_t mutex;
-    cnd_t has_item;
+    pthread_mutex_t mutex;
+    pthread_cond_t has_item;
     struct q_header q;
 };
 
@@ -273,50 +270,53 @@ chan_header(void *chan)
         if(init){                                           \
             header->q.head = 0;                             \
             header->q.tail = 0;                             \
-            mtx_init(&header->mutex);                       \
-            cnd_init(&header->has_item);                    \
+            pthread_mutex_init(&header->mutex);             \
+            pthread_cond_init(&header->has_item);           \
         }                                                   \
                                                             \
         *(chan) = (void *) header->q.da.start;              \
     }while(0)
 
-#define chan_put(chan, item)                            \
-    do{                                                 \
-        assert(*(chan) != NULL);                        \
-                                                        \
-        mtx_lock(&chan_header(*(chan))->mutex);         \
-        q_enqueue(*(chan), item);                       \
-        mtx_unlock(&chan_header(*(chan))->mutex);       \
-                                                        \
-        cnd_signal(&chan_header(*(chan))->has_item);    \
+#define chan_put(chan, item)                                    \
+    do{                                                         \
+        assert(*(chan) != NULL);                                \
+                                                                \
+        pthread_mutex_lock(&chan_header(*(chan))->mutex);       \
+        q_enqueue(*(chan), item);                               \
+        pthread_mutex_unlock(&chan_header(*(chan))->mutex);     \
+                                                                \
+        pthread_cond_signal(&chan_header(*(chan))->has_item);   \
     }while(0)
 
-#define chan_get(chan)                                  \
-    ({                                                  \
-        assert(*(chan) != NULL);                        \
-                                                        \
-        mtx_lock(&chan_header(*(chan))->mutex);         \
-                                                        \
-        while(q_head(*(chan)) == q_tail(*(chan)))       \
-            cnd_wait(&chan_header(*(chan))->has_item,   \
-                     &chan_header(*(chan))->mutex);     \
-                                                        \
-        __typeof__(**(chan)) out = q_dequeue(*(chan));  \
-                                                        \
-        mtx_unlock(&chan_header(*(chan))->mutex);       \
-                                                        \
-        out;                                            \
+#define chan_get(chan)                                          \
+    ({                                                          \
+        assert(*(chan) != NULL);                                \
+                                                                \
+        pthread_mutex_lock(&chan_header(*(chan))->mutex);       \
+                                                                \
+        while(q_head(*(chan)) == q_tail(*(chan)))               \
+            pthread_cond_wait(&chan_header(*(chan))->has_item,  \
+                              &chan_header(*(chan))->mutex);    \
+                                                                \
+        __typeof__(**(chan)) out = q_dequeue(*(chan));          \
+                                                                \
+        pthread_mutex_unlock(&chan_header(*(chan))->mutex);     \
+                                                                \
+        out;                                                    \
     })
 
-#define chan_reset(chan)                                    \
-    do{                                                     \
-        if(*(chan) != NULL){                                \
-            mtx_destroy(&chan_header(*(chan))->mutex);      \
-            cnd_destroy(&chan_header(*(chan))->has_item);   \
-            free(chan_header(*(chan)));                     \
-            *(chan) = NULL;                                 \
-        }                                                   \
+#define chan_reset(chan)                                            \
+    do{                                                             \
+        if(*(chan) != NULL){                                        \
+            pthread_mutex_destroy(&chan_header(*(chan))->mutex);    \
+            pthread_cond_destroy(&chan_header(*(chan))->has_item);  \
+            free(chan_header(*(chan)));                             \
+            *(chan) = NULL;                                         \
+        }                                                           \
     }while(0)
+
+#define cut_with(start, end) for(bool done = ((start), false); !done; (end), done = true)
+#define cut_defer(exp) with(0, exp)
 
 #ifndef CUT_REMOVE_PREFIX
 #define CUT_REMOVE_PREFIX 1
@@ -337,6 +337,8 @@ chan_header(void *chan)
 #define dequeue q_dequeue
 #define put chan_put
 #define get chan_get
+#define with cut_with
+#define defer cut_defer
 
 #endif
 
