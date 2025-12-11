@@ -286,7 +286,7 @@ chan_header(void *chan)
         assert(*(chan) != NULL);                        \
                                                         \
         mtx_lock(&chan_header(*(chan))->mutex);         \
-        q_enq(*(chan), item);                           \
+        q_enqueue(*(chan), item);                       \
         mtx_unlock(&chan_header(*(chan))->mutex);       \
                                                         \
         cnd_signal(&chan_header(*(chan))->has_item);    \
@@ -302,7 +302,7 @@ chan_header(void *chan)
             cnd_wait(&chan_header(*(chan))->has_item,   \
                      &chan_header(*(chan))->mutex);     \
                                                         \
-        *(out) = q_deq(*(chan));                        \
+        *(out) = q_dequeue(*(chan));                        \
                                                         \
         mtx_unlock(&chan_header(*(chan))->mutex);       \
     }while(0)
