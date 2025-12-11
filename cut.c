@@ -122,7 +122,7 @@ da_cap(void *da)
         }                                       \
     }while(0)
 
-#define da_for(it, da) for(__typeof__(da) it = (da); it != (da) + da_len(da); ++it)
+#define da_foreach(it, da) for(__typeof__(da) it = (da); it != (da) + da_len(da); ++it)
 
 #define sb_append(sb, str) da_push_items(sb, str, strlen(str))
 
@@ -213,7 +213,7 @@ q_tail(void *q)
         }                                           \
     }while(0)
 
-#define q_enq(q, item)                                              \
+#define q_enqueue(q, item)                                          \
     do{                                                             \
         if(da_cap(*(q)) == 0                                        \
            || (q_tail(*(q)) + 1) % da_cap(*(q)) == q_head(*(q)))    \
@@ -223,7 +223,7 @@ q_tail(void *q)
         q_header(*(q))->tail = (q_tail(*(q)) + 1) % da_cap(*(q));   \
     }while(0)
 
-#define q_deq(q)                                                        \
+#define q_dequeue(q)                                                    \
     (                                                                   \
         assert(*(q) != NULL),                                           \
         q_header(*(q))->head = (q_head(*(q)) + 1) % da_cap(*(q)),       \
@@ -281,7 +281,7 @@ chan_header(void *chan)
         *(chan) = (void *) header->q.da.start;              \
     }while(0)
 
-#define chan_send(chan, item)                           \
+#define chan_put(chan, item)                            \
     do{                                                 \
         assert(*(chan) != NULL);                        \
                                                         \
@@ -292,7 +292,7 @@ chan_header(void *chan)
         cnd_signal(&chan_header(*(chan))->has_item);    \
     }while(0)
 
-#define chan_recv(chan, out)                            \
+#define chan_get(chan, out)                             \
     do{                                                 \
         assert(*(chan) != NULL);                        \
                                                         \
@@ -316,5 +316,27 @@ chan_header(void *chan)
             *(chan) = NULL;                                 \
         }                                                   \
     }while(0)
+
+#ifndef CUT_REMOVE_PREFIX
+#define CUT_REMOVE_PREFIX 1
+#endif
+
+#if CUT_REMOVE_PREFIX
+
+#define len da_len
+#define cap da_cap
+#define push_items da_push_items
+#define push da_push
+#define pop da_pop
+#define swap_delete da_swap_delete
+#define foreach da_foreach
+#define append sb_append
+#define appendf sb_appendf
+#define enqueue q_enqueue
+#define dequeue q_dequeue
+#define put chan_put
+#define get chan_get
+
+#endif
 
 #endif
