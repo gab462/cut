@@ -241,115 +241,6 @@ q_tail(void *q)
         }                                       \
     }while(0)
 
-struct chan_header
-{
-    pthread_mutex_t mutex;
-    pthread_cond_t has_item;
-    struct q_header q;
-};
-
-static inline
-struct chan_header *
-chan_header(void *chan)
-{
-    if(chan != NULL)
-        return(chan - sizeof(struct chan_header));
-    else
-        return(NULL);
-}
-
-#define chan_reserve(chan, new_capacity)                        \
-    do{                                                         \
-        struct chan_header *header;                             \
-        bool init = *(chan) == NULL;                            \
-                                                                \
-        header = realloc(chan_header(*(chan)),                  \
-                         sizeof(struct chan_header)             \
-                         + sizeof(**(chan)) * new_capacity);    \
-                                                                \
-        assert(header != NULL);                                 \
-                                                                \
-        header->q.da.capacity = new_capacity;                   \
-                                                                \
-        if(init){                                               \
-            header->q.head = 0;                                 \
-            header->q.tail = 0;                                 \
-            pthread_mutex_init(&header->mutex, NULL);           \
-            pthread_cond_init(&header->has_item, NULL);         \
-        }                                                       \
-                                                                \
-        *(chan) = (void *) header->q.da.start;                  \
-    }while(0)
-
-#define chan_grow(chan)                                     \
-    do{                                                     \
-        int old_cap = da_cap(*(chan));                      \
-        int head = q_head(*(chan));                         \
-                                                            \
-        chan_reserve(chan, (old_cap + 1) * 2);              \
-                                                            \
-        int growth = da_cap(*(chan)) - old_cap;             \
-                                                            \
-        if(q_tail(*(chan)) < head){                         \
-            memmove(*(chan) + head + growth,                \
-                    *(chan) + head,                         \
-                    (old_cap - head) * sizeof(**(chan)));   \
-                                                            \
-            chan_header(*(chan))->q.head += growth;         \
-        }                                                   \
-    }while(0)
-
-#define chan_put(chan, item)                                            \
-    do{                                                                 \
-        assert(*(chan) != NULL);                                        \
-                                                                        \
-        pthread_mutex_lock(&chan_header(*(chan))->mutex);               \
-                                                                        \
-        if(da_cap(*(chan)) == 0                                         \
-           || (q_tail(*(chan)) + 1) % da_cap(*(chan)) == q_head(*(chan))) \
-            chan_grow(chan);                                            \
-                                                                        \
-        (*(chan))[q_tail(*(chan))] = item;                              \
-        q_header(*(chan))->tail = (q_tail(*(chan)) + 1) % da_cap(*(chan)); \
-                                                                        \
-        pthread_mutex_unlock(&chan_header(*(chan))->mutex);             \
-                                                                        \
-        pthread_cond_signal(&chan_header(*(chan))->has_item);           \
-    }while(0)
-
-#define chan_get(chan)                                              \
-    ({                                                              \
-        assert(*(chan) != NULL);                                    \
-                                                                    \
-        pthread_mutex_lock(&chan_header(*(chan))->mutex);           \
-                                                                    \
-        while(q_head(*(chan)) == q_tail(*(chan)))                   \
-            pthread_cond_wait(&chan_header(*(chan))->has_item,      \
-                              &chan_header(*(chan))->mutex);        \
-                                                                    \
-        q_header(*(chan))->head =                                   \
-            (q_head(*(chan)) + 1) % da_cap(*(chan));                \
-                                                                    \
-        int head = q_head(*(chan));                                 \
-                                                                    \
-        __typeof__(**(chan)) out =                                  \
-            (*(chan))[head > 0 ? head - 1 : da_cap(*(chan)) - 1];   \
-                                                                    \
-        pthread_mutex_unlock(&chan_header(*(chan))->mutex);         \
-                                                                    \
-        out;                                                        \
-    })
-
-#define chan_reset(chan)                                            \
-    do{                                                             \
-        if(*(chan) != NULL){                                        \
-            pthread_mutex_destroy(&chan_header(*(chan))->mutex);    \
-            pthread_cond_destroy(&chan_header(*(chan))->has_item);  \
-            free(chan_header(*(chan)));                             \
-            *(chan) = NULL;                                         \
-        }                                                           \
-    }while(0)
-
 #define cut_with(start, end) for(bool done = ((start), false); !done; (end), done = true)
 #define cut_defer(exp) with(0, exp)
 
@@ -370,8 +261,6 @@ chan_header(void *chan)
 #define appendf sb_appendf
 #define enqueue q_enqueue
 #define dequeue q_dequeue
-#define put chan_put
-#define get chan_get
 #define with cut_with
 #define defer cut_defer
 
