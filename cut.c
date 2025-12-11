@@ -101,19 +101,18 @@ da_cap(void *da)
     }while(0)
 
 #define da_pop(da)                              \
-    do{                                         \
-        assert(*(da) != NULL);                  \
-                                                \
-        da_header(*(da))->len -= 1;             \
-    }while(0)
+    (                                           \
+        assert(*(da) != NULL),                  \
+        da_header(*(da))->len -= 1,             \
+        (*(da))[da_len(*(da))]                  \
+    )
 
 #define da_swap_delete(da, idx)                     \
-    do{                                             \
-        assert(*(da) != NULL);                      \
-                                                    \
-        (*(da))[idx] = (*(da))[da_len(*(da)) - 1];  \
-        da_pop(da);                                 \
-    }while(0)
+    (                                               \
+        assert(*(da) != NULL),                      \
+        (*(da))[idx] = (*(da))[da_len(*(da)) - 1],  \
+        da_pop(da)                                  \
+    )
 
 #define da_reset(da)                            \
     do{                                         \
@@ -178,8 +177,6 @@ q_tail(void *q)
 #define q_reserve(q, capacity)                          \
     do{                                                 \
         struct q_header *header;                        \
-        int head = q_head(*(q));                        \
-        int tail = q_tail(*(q));                        \
         bool init = *(q) == NULL;                       \
                                                         \
         header = realloc(q_header(*(q)),                \
@@ -226,7 +223,7 @@ q_tail(void *q)
         q_header(*(q))->tail = (q_tail(*(q)) + 1) % da_cap(*(q));   \
     }while(0)
 
-#define q_deq(q, item)                                                  \
+#define q_deq(q)                                                        \
     (                                                                   \
         assert(*(q) != NULL),                                           \
         q_header(*(q))->head = (q_head(*(q)) + 1) % da_cap(*(q)),       \
@@ -241,7 +238,7 @@ q_tail(void *q)
         }                                       \
     }while(0)
 
-#define with(start, end) for(bool done = ({start;}, false); !done; ({end;}), done = true)
+#define with(start, end) for(bool done = ((start), false); !done; (end), done = true)
 #define defer(exp) with(0, exp)
 
 struct chan_header
@@ -264,8 +261,6 @@ chan_header(void *chan)
 #define chan_reserve(chan, capacity)                        \
     do{                                                     \
         struct chan_header *header;                         \
-        int head = chan_head(*(chan));                      \
-        int tail = chan_tail(*(chan));                      \
         bool init = *(chan) == NULL;                        \
                                                             \
         header = realloc(chan_header(*(chan)),              \
@@ -277,8 +272,8 @@ chan_header(void *chan)
         header->q.da.cap = capacity;                        \
                                                             \
         if(init){                                           \
-            header->q.head = head;                          \
-            header->q.tail = tail;                          \
+            header->q.head = 0;                             \
+            header->q.tail = 0;                             \
             mtx_init(&header->mutex);                       \
             cnd_init(&header->has_item);                    \
         }                                                   \
