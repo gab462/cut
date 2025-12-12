@@ -2,6 +2,7 @@
 #include <sys/time.h>
 
 struct task {
+    void *data;
     bool (*poll)(struct task *task);
 };
 
@@ -9,7 +10,10 @@ static inline
 bool
 task_poll(struct task *task)
 {
-    return task->poll(task);
+    if(task->poll == NULL)
+        return(true);
+
+    return(task->poll(task));
 }
 
 struct sequential_task {
@@ -19,21 +23,25 @@ struct sequential_task {
 
 static inline
 bool
-sequential_task_poll(struct task *arg)
+sequential_task_poll(struct task *task)
 {
-    struct sequential_task *task = (struct sequential_task *) arg;
+    struct sequential_task *seq = (struct sequential_task *) task;
 
-    if(q_empty(task->queue))
-        return true;
+    if(q_empty(seq->queue))
+        return(true);
 
-    struct task *current = task->queue[q_head(task->queue)];
+    struct task *current = seq->queue[q_head(seq->queue)];
+
+    current->data = task->data;
 
     bool done = task_poll(current);
 
-    if(done)
-        dequeue(&task->queue);
+    if(done){
+        task->data = current->data;
+        dequeue(&seq->queue);
+    }
 
-    return(q_empty(task->queue));
+    return(q_empty(seq->queue));
 }
 
 struct sequential_task
@@ -51,20 +59,22 @@ struct concurrent_task {
 
 static inline
 bool
-concurrent_task_poll(struct task *arg)
+concurrent_task_poll(struct task *task)
 {
-    struct concurrent_task *task = (struct concurrent_task *) arg;
+    struct concurrent_task *group = (struct concurrent_task *) task;
 
-    for(int i = 0; i < len(task->list); i++){
-        bool done = task_poll(task->list[i]);
+    for(int i = 0; i < len(group->list); i++){
+        group->list[i]->data = task->data;
+
+        bool done = task_poll(group->list[i]);
 
         if(done){
-            swap_delete(&task->list, i);
+            swap_delete(&group->list, i);
             i--;
         }
     }
 
-    return(len(task->list) == 0);
+    return(len(group->list) == 0);
 }
 
 struct concurrent_task
@@ -77,36 +87,19 @@ concurrent_task(void)
 
 struct sleep_task {
     struct task interface;
-    uint64_t previous;
     int64_t until;
 };
 
 static inline
-int64_t
-current_time_millis(void)
-{
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (int64_t)tv.tv_sec * 1000 + (int64_t)tv.tv_usec / 1000;
-}
-
-static inline
 bool
-sleep_task_poll(struct task *arg)
+sleep_task_poll(struct task *task)
 {
-    struct sleep_task *task = (struct sleep_task *) arg;
+    struct sleep_task *sleeper = (struct sleep_task *) task;
+    const int64_t *dt = task->data;
 
-    if(task->previous == 0)
-        task->previous = current_time_millis();
+    sleeper->until -= *dt;
 
-    int64_t current = current_time_millis();
-    int64_t dt = current - task->previous;
-
-    task->until -= dt;
-
-    task->previous = current;
-
-    return task->until <= 0;
+    return(sleeper->until <= 0);
 }
 
 static inline
@@ -115,29 +108,46 @@ sleep_task(float until)
 {
     return((struct sleep_task){
         .interface.poll = sleep_task_poll,
-        .previous = 0,
         .until = (until * 1000.f)
     });
+}
+
+static inline
+int64_t
+current_time_millis(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return((int64_t)tv.tv_sec * 1000 + (int64_t)tv.tv_usec / 1000);
 }
 
 int
 main(void)
 {
-    struct sequential_task task = sequential_task();
-
     struct sleep_task first = sleep_task(1.f);
-    enqueue(&task.queue, &first.interface);
-
-    struct concurrent_task second = concurrent_task();
 
     struct sleep_task second_a = sleep_task(2.f);
     struct sleep_task second_b = sleep_task(2.f);
+
+    struct concurrent_task second = concurrent_task();
     push(&second.list, &second_a.interface, &second_b.interface);
 
+    struct sequential_task task = sequential_task();
+    enqueue(&task.queue, &first.interface);
     enqueue(&task.queue, &second.interface);
 
-    while(!task_poll(&task.interface));
+    int64_t previous = current_time_millis();
+    int64_t dt = 0;
 
+    task.interface.data = &dt;
+
+    while(!task_poll(&task.interface)){
+        int64_t now = current_time_millis();
+        dt = now - previous;
+        previous = now;
+    }
+
+    da_reset(&second.list);
     q_reset(&task.queue);
 
     return(0);
