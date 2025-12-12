@@ -101,18 +101,18 @@ da_cap(void *da)
         da_push_items(da, items, item_count);               \
     }while(0)
 
-#define da_pop(da)                              \
-    (                                           \
-        assert(*(da) != NULL),                  \
-        da_header(*(da))->length -= 1,          \
-        (*(da))[da_len(*(da))]                  \
-    )
+#define da_pop(da)                                  \
+    (                                               \
+        assert(*(da) != NULL && da_len(*(da)) > 0), \
+        da_header(*(da))->length -= 1,              \
+        (*(da))[da_len(*(da))]                      \
+        )
 
-#define da_swap_delete(da, idx)                     \
-    do{                                             \
-        assert(*(da) != NULL);                      \
-        (*(da))[idx] = (*(da))[da_len(*(da)) - 1];  \
-        da_pop(da);                                 \
+#define da_swap_delete(da, idx)                         \
+    do{                                                 \
+        assert(*(da) != NULL && idx < da_len(*(da)));   \
+        (*(da))[idx] = (*(da))[da_len(*(da)) - 1];      \
+        da_pop(da);                                     \
     }while(0)
 
 #define da_reset(da)                            \
@@ -228,10 +228,12 @@ q_tail(void *q)
 
 #define q_dequeue(q)                                                    \
     (                                                                   \
-        assert(*(q) != NULL),                                           \
+        assert(*(q) != NULL && q_head(*q) != q_tail(*(q))),             \
         q_header(*(q))->head = (q_head(*(q)) + 1) % da_cap(*(q)),       \
         (*(q))[q_head(*(q)) > 0 ? q_head(*(q)) - 1 : da_cap(*(q)) - 1]  \
     )
+
+#define q_empty(q) (q_head(q) == q_tail(q))
 
 #define q_reset(q)                              \
     do{                                         \
