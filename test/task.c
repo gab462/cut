@@ -38,7 +38,12 @@ sequential_task_poll(struct task *task)
 
     if(done){
         task->data = current->data;
-        dequeue(&seq->queue);
+
+        struct task *completed = dequeue(&seq->queue);
+        free(completed);
+
+        if(q_empty(seq->queue))
+            q_reset(&seq->queue);
     }
 
     return(q_empty(seq->queue));
@@ -69,12 +74,19 @@ concurrent_task_poll(struct task *task)
     struct concurrent_task *group = (struct concurrent_task *) task;
 
     for(int i = 0; i < len(group->list); i++){
-        group->list[i]->data = task->data;
+        struct task *current = group->list[i];
 
-        bool done = task_poll(group->list[i]);
+        current->data = task->data;
+
+        bool done = task_poll(current);
 
         if(done){
+            free(current);
             swap_delete(&group->list, i);
+
+            if(len(group->list) == 0)
+                da_reset(&group->list);
+
             i--;
         }
     }
@@ -163,6 +175,8 @@ main(void)
         dt = now - previous;
         previous = now;
     }
+
+    free(task);
 
     // TODO: cleanup memory
 
