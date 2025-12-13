@@ -44,12 +44,17 @@ sequential_task_poll(struct task *task)
     return(q_empty(seq->queue));
 }
 
-struct sequential_task
-sequential_task(void)
+static inline
+struct task *
+sequential_task(struct task **tasks, int count)
 {
-    return((struct sequential_task){
-        .interface.poll = sequential_task_poll
-    });
+    struct sequential_task *seq = calloc(1, sizeof(struct sequential_task));
+    seq->interface.poll = sequential_task_poll;
+
+    for(int i = 0; i < count; i++)
+        enqueue(&seq->queue, tasks[i]);
+
+    return &seq->interface;
 }
 
 struct concurrent_task {
@@ -77,13 +82,27 @@ concurrent_task_poll(struct task *task)
     return(len(group->list) == 0);
 }
 
-struct concurrent_task
-concurrent_task(void)
+static inline
+struct task *
+concurrent_task(struct task **tasks, int count)
 {
-    return((struct concurrent_task){
-        .interface.poll = concurrent_task_poll
-    });
+    struct concurrent_task *group = calloc(1, sizeof(struct concurrent_task));
+    group->interface.poll = concurrent_task_poll;
+
+    push_items(&group->list, tasks, count);
+
+    return &group->interface;
 }
+
+#define task_countof(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+#define task_sequence(...)                                              \
+    sequential_task(((struct task *[]){ __VA_ARGS__ }),                 \
+                    task_countof(((struct task *[]){ __VA_ARGS__ })))
+
+#define task_group(...)                                                 \
+    concurrent_task(((struct task *[]){ __VA_ARGS__ }),                 \
+                    task_countof(((struct task *[]){ __VA_ARGS__ })))
 
 struct sleep_task {
     struct task interface;
@@ -103,13 +122,14 @@ sleep_task_poll(struct task *task)
 }
 
 static inline
-struct sleep_task
+struct task *
 sleep_task(float until)
 {
-    return((struct sleep_task){
-        .interface.poll = sleep_task_poll,
-        .until = (until * 1000.f)
-    });
+    struct sleep_task *sleeper = calloc(1, sizeof(struct sleep_task));
+    sleeper->interface.poll = sleep_task_poll;
+    sleeper->until = until * 1000.f;
+
+    return &sleeper->interface;
 }
 
 static inline
@@ -124,31 +144,27 @@ current_time_millis(void)
 int
 main(void)
 {
-    struct sleep_task first = sleep_task(1.f);
-
-    struct sleep_task second_a = sleep_task(2.f);
-    struct sleep_task second_b = sleep_task(2.f);
-
-    struct concurrent_task second = concurrent_task();
-    push(&second.list, &second_a.interface, &second_b.interface);
-
-    struct sequential_task task = sequential_task();
-    enqueue(&task.queue, &first.interface);
-    enqueue(&task.queue, &second.interface);
+    struct task *task =
+        task_sequence(
+            sleep_task(1.f),
+            task_group(
+                sleep_task(2.f),
+                sleep_task(2.f)
+            )
+        );
 
     int64_t previous = current_time_millis();
     int64_t dt = 0;
 
-    task.interface.data = &dt;
+    task->data = &dt;
 
-    while(!task_poll(&task.interface)){
+    while(!task_poll(task)){
         int64_t now = current_time_millis();
         dt = now - previous;
         previous = now;
     }
 
-    da_reset(&second.list);
-    q_reset(&task.queue);
+    // TODO: cleanup memory
 
     return(0);
 }
