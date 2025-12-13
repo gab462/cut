@@ -33,7 +33,6 @@ sequential_task_poll(struct task *task)
     struct task *current = seq->queue[q_head(seq->queue)];
 
     current->data = task->data;
-
     bool done = task_poll(current);
 
     if(done){
@@ -83,11 +82,10 @@ concurrent_task_poll(struct task *task)
         if(done){
             free(current);
             swap_delete(&group->list, i);
+            i--;
 
             if(len(group->list) == 0)
                 da_reset(&group->list);
-
-            i--;
         }
     }
 
@@ -177,8 +175,6 @@ main(void)
     }
 
     free(task);
-
-    // TODO: cleanup memory
 
     return(0);
 }
