@@ -106,7 +106,7 @@ da_cap(void *da)
         assert(*(da) != NULL && da_len(*(da)) > 0), \
         da_header(*(da))->length -= 1,              \
         (*(da))[da_len(*(da))]                      \
-        )
+    )
 
 #define da_swap_delete(da, idx)                         \
     do{                                                 \

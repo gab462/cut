@@ -76,7 +76,6 @@ concurrent_task_poll(struct task *task)
         struct task *current = group->list[i];
 
         current->data = task->data;
-
         bool done = task_poll(current);
 
         if(done){

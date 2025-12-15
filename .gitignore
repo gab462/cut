@@ -1,5 +1,2 @@
-test/*.dSYM
-test/da
-test/sb
-test/q
-test/task
+test/*
+!test/*.c
