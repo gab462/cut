@@ -19,6 +19,7 @@ task_poll(struct task *task)
 struct sequential_task {
     struct task interface;
     struct task **queue;
+    bool init;
 };
 
 static inline
@@ -32,17 +33,25 @@ sequential_task_poll(struct task *task)
 
     struct task *current = seq->queue[q_head(seq->queue)];
 
-    current->data = task->data;
+    if(!seq->init){ // Set input for first task
+        current->data = task->data;
+        seq->init = true;
+    }
+
     bool done = task_poll(current);
 
     if(done){
-        task->data = current->data;
+        task->data = current->data; // Get result from task
 
         struct task *completed = dequeue(&seq->queue);
         free(completed);
 
-        if(q_empty(seq->queue))
+        if(!q_empty(seq->queue)){
+            struct task *next = seq->queue[q_head(seq->queue)];
+            next->data = task->data; // Pass result as input to next task
+        }else{
             q_reset(&seq->queue);
+        }
     }
 
     return(q_empty(seq->queue));
@@ -58,12 +67,13 @@ sequential_task(struct task **tasks, int count)
     for(int i = 0; i < count; i++)
         enqueue(&seq->queue, tasks[i]);
 
-    return &seq->interface;
+    return(&seq->interface);
 }
 
 struct concurrent_task {
     struct task interface;
     struct task **list;
+    bool init;
 };
 
 static inline
@@ -75,7 +85,9 @@ concurrent_task_poll(struct task *task)
     for(int i = 0; i < len(group->list); i++){
         struct task *current = group->list[i];
 
-        current->data = task->data;
+        if(!group->init)
+            current->data = task->data;
+
         bool done = task_poll(current);
 
         if(done){
@@ -87,6 +99,8 @@ concurrent_task_poll(struct task *task)
                 da_reset(&group->list);
         }
     }
+
+    group->init = true;
 
     return(len(group->list) == 0);
 }
@@ -100,7 +114,7 @@ concurrent_task(struct task **tasks, int count)
 
     push_items(&group->list, tasks, count);
 
-    return &group->interface;
+    return(&group->interface);
 }
 
 #define task_countof(arr) (sizeof(arr) / sizeof((arr)[0]))
@@ -138,7 +152,7 @@ sleep_task(float until)
     sleeper->interface.poll = sleep_task_poll;
     sleeper->until = until * 1000.f;
 
-    return &sleeper->interface;
+    return(&sleeper->interface);
 }
 
 static inline

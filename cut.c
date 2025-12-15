@@ -180,7 +180,7 @@ q_tail(void *q)
 #define q_reserve(q, new_capacity)                          \
     do{                                                     \
         struct q_header *header;                            \
-        bool init = *(q) == NULL;                           \
+        bool init = *(q) != NULL;                           \
                                                             \
         header = realloc(q_header(*(q)),                    \
                          sizeof(struct q_header)            \
@@ -190,7 +190,7 @@ q_tail(void *q)
                                                             \
         header->da.capacity = new_capacity;                 \
                                                             \
-        if (init) {                                         \
+        if(!init){                                          \
             header->head = 0;                               \
             header->tail = 0;                               \
         }                                                   \
