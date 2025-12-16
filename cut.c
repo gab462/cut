@@ -29,8 +29,6 @@
 #include <assert.h>
 #include <pthread.h>
 
-#pragma region dynamic array
-
 struct da_header
 {
     int length, capacity;
@@ -127,10 +125,6 @@ da_cap(void *da)
 
 #define da_foreach(it, da) for(__typeof__(da) it = (da); it != (da) + da_len(da); ++it)
 
-#pragma endregion
-
-#pragma region string builder
-
 #define sb_append(sb, str) da_push_items(sb, str, strlen(str))
 
 #define sb_appendf(sb, fmt, ...)                                \
@@ -146,10 +140,6 @@ da_cap(void *da)
                                                                 \
         da_header(*(sb))->length += size;                       \
     }while(0)
-
-#pragma endregion
-
-#pragma region queue
 
 struct q_header
 {
@@ -253,146 +243,8 @@ q_tail(void *q)
         }                                       \
     }while(0)
 
-#pragma endregion
-
-#pragma region defer
-
 #define cut_with(start, end) for(bool done = ((start), false); !done; (end), done = true)
 #define cut_defer(exp) with(0, exp)
-
-#pragma endregion
-
-#pragma region multitasking
-
-struct task {
-    void *data;
-    bool (*poll)(struct task *task);
-};
-
-static inline
-bool
-task_poll(struct task *task)
-{
-    if(task->poll == NULL)
-        return(true);
-
-    return(task->poll(task));
-}
-
-struct sequential_task {
-    struct task interface;
-    struct task **queue;
-    bool init;
-};
-
-static inline
-bool
-sequential_task_poll(struct task *task)
-{
-    struct sequential_task *seq = (struct sequential_task *) task;
-
-    if(q_empty(seq->queue))
-        return(true);
-
-    struct task *current = seq->queue[q_head(seq->queue)];
-
-    if(!seq->init){ // Set input for first task
-        current->data = task->data;
-        seq->init = true;
-    }
-
-    bool done = task_poll(current);
-
-    if(done){
-        task->data = current->data; // Get result from task
-
-        struct task *completed = q_dequeue(&seq->queue);
-        free(completed);
-
-        if(!q_empty(seq->queue)){
-            struct task *next = seq->queue[q_head(seq->queue)];
-            next->data = task->data; // Pass result as input to next task
-        }else{
-            q_reset(&seq->queue);
-        }
-    }
-
-    return(q_empty(seq->queue));
-}
-
-static inline
-struct task *
-sequential_task(struct task **tasks, int count)
-{
-    struct sequential_task *seq = calloc(1, sizeof(struct sequential_task));
-    seq->interface.poll = sequential_task_poll;
-
-    for(int i = 0; i < count; i++)
-        q_enqueue(&seq->queue, tasks[i]);
-
-    return(&seq->interface);
-}
-
-struct concurrent_task {
-    struct task interface;
-    struct task **list;
-    bool init;
-};
-
-static inline
-bool
-concurrent_task_poll(struct task *task)
-{
-    struct concurrent_task *group = (struct concurrent_task *) task;
-
-    for(int i = 0; i < da_len(group->list); i++){
-        struct task *current = group->list[i];
-
-        if(!group->init)
-            current->data = task->data;
-
-        bool done = task_poll(current);
-
-        if(done){
-            free(current);
-            da_swap_delete(&group->list, i);
-            i--;
-
-            if(da_len(group->list) == 0)
-                da_reset(&group->list);
-        }
-    }
-
-    group->init = true;
-
-    return(da_len(group->list) == 0);
-}
-
-static inline
-struct task *
-concurrent_task(struct task **tasks, int count)
-{
-    struct concurrent_task *group = calloc(1, sizeof(struct concurrent_task));
-    group->interface.poll = concurrent_task_poll;
-
-    da_push_items(&group->list, tasks, count);
-
-    return(&group->interface);
-}
-
-#define task_countof(arr) (sizeof(arr) / sizeof((arr)[0]))
-
-#define task_sequence(...)                                              \
-    sequential_task(((struct task *[]){ __VA_ARGS__ }),                 \
-                    task_countof(((struct task *[]){ __VA_ARGS__ })))
-
-#define task_group(...)                                                 \
-    concurrent_task(((struct task *[]){ __VA_ARGS__ }),                 \
-                    task_countof(((struct task *[]){ __VA_ARGS__ })))
-
-#pragma endregion
-
-#pragma region prefix
 
 #ifndef CUT_REMOVE_PREFIX
 #define CUT_REMOVE_PREFIX 1
@@ -415,7 +267,5 @@ concurrent_task(struct task **tasks, int count)
 #define defer cut_defer
 
 #endif
-
-#pragma endregion
 
 #endif
