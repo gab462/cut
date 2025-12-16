@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <netdb.h>
 
+static inline
 void
 tcp_set_nonblock(int fd)
 {
@@ -78,7 +79,7 @@ tcp_connect(char *ip, char *port)
     err = getaddrinfo(ip, port, &hints, &res);
     assert(err == 0);
 
-    for (struct addrinfo *p = res; p != NULL; p = p->ai_next) {
+    for(struct addrinfo *p = res; p != NULL; p = p->ai_next){
         int conn = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
         if(conn == -1) continue;
 
@@ -94,6 +95,7 @@ tcp_connect(char *ip, char *port)
 
     assert(false && "Could not connect");
     freeaddrinfo(res);
+    return(-1);
 }
 
 #endif

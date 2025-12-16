@@ -55,7 +55,7 @@ server_client_task(int fd, struct sockaddr_in addr)
     task->fd = fd;
     task->addr = addr;
 
-    return &task->interface;
+    return(&task->interface);
 }
 
 struct server_accept_task {
@@ -87,7 +87,7 @@ server_accept_task(short port)
     task->interface.poll = server_accept_task_poll;
     task->fd = tcp_listen(port);
 
-    return &task->interface;
+    return(&task->interface);
 }
 
 int

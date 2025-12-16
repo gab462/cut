@@ -52,7 +52,7 @@ client_task(char *ip, char *port)
     task->interface.poll = client_task_poll;
     task->fd = tcp_connect(ip, port);
 
-    return &task->interface;
+    return(&task->interface);
 }
 
 int
@@ -60,16 +60,15 @@ main(void)
 {
     struct client_task *task = (struct client_task *) client_task(IP, PORT);
 
-    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
+    tcp_set_nonblock(STDIN_FILENO);
 
     while(!task_poll(&task->interface)){
         char buf[64];
         ssize_t count = read(STDIN_FILENO, buf, sizeof(buf) - 1);
 
-        if(count == -1)
+        if(count == -1){
             assert(errno == EAGAIN);
-        else if(count > 0){
+        }else if(count > 0){
             push_items(&task->msg, buf, count);
         }
 
