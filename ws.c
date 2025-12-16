@@ -1,5 +1,5 @@
-#ifndef INCLUDE_WS_H
-#define INCLUDE_WS_H
+#ifndef INCLUDE_WS_C
+#define INCLUDE_WS_C
 
 #include "cut.c"
 #include <poll.h>

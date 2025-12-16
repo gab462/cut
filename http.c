@@ -1,5 +1,5 @@
-#ifndef INCLUDE_HTTP_H
-#define INCLUDE_HTTP_H
+#ifndef INCLUDE_HTTP_C
+#define INCLUDE_HTTP_C
 
 #include "cut.c"
 #include <curl/curl.h>

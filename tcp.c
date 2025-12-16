@@ -1,5 +1,5 @@
-#ifndef INCLUDE_TCP_H
-#define INCLUDE_TCP_H
+#ifndef INCLUDE_TCP_C
+#define INCLUDE_TCP_C
 
 #include "cut.c"
 #include <unistd.h>
