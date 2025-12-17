@@ -2,8 +2,12 @@
 #include "../tcp.c"
 #include "../task.c"
 #include <stdio.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <assert.h>
 
 #define IP "127.0.0.1"
 #define PORT "8080"

@@ -2,6 +2,8 @@
 #define INCLUDE_HTTP_C
 
 #include "cut.c"
+#include <stddef.h>
+#include <stdio.h>
 #include <curl/curl.h>
 
 static inline
@@ -9,7 +11,7 @@ size_t
 http_sb_write(void *data, size_t, size_t count, void *userp)
 {
     char **sb = userp;
-    da_push_items(sb, data, (int) count);
+    da_push_items(sb, data, count);
     return(count);
 }
 

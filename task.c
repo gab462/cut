@@ -2,6 +2,8 @@
 #define INCLUDE_TASK_C
 
 #include "cut.c"
+#include <stddef.h>
+#include <stdlib.h>
 
 struct task {
     void *data;

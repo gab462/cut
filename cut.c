@@ -27,7 +27,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
-#include <pthread.h>
 
 struct da_header
 {

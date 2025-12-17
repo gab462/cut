@@ -2,6 +2,8 @@
 #define INCLUDE_WS_C
 
 #include "cut.c"
+#include <stddef.h>
+#include <stdio.h>
 #include <poll.h>
 #include <assert.h>
 #include <curl/curl.h>

@@ -1,11 +1,11 @@
 #ifndef INCLUDE_TCP_C
 #define INCLUDE_TCP_C
 
-#include "cut.c"
-#include <unistd.h>
-#include <arpa/inet.h>
 #include <fcntl.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <netdb.h>
+#include <assert.h>
 
 static inline
 void

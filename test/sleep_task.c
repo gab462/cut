@@ -1,5 +1,7 @@
 #include "../cut.c"
 #include "../task.c"
+#include <stddef.h>
+#include <stdlib.h>
 #include <sys/time.h>
 
 struct sleep_task {

@@ -1,4 +1,8 @@
 #include "../cut.c"
+#include <stddef.h>
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
 
 int
 main(void)
