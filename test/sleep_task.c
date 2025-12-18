@@ -9,7 +9,6 @@ struct sleep_task {
     int64_t until;
 };
 
-static inline
 bool
 sleep_task_poll(struct task *task)
 {
@@ -21,7 +20,6 @@ sleep_task_poll(struct task *task)
     return(sleeper->until <= 0);
 }
 
-static inline
 struct task *
 sleep_task(float until)
 {
@@ -32,7 +30,6 @@ sleep_task(float until)
     return(&sleeper->interface);
 }
 
-static inline
 int64_t
 current_time_millis(void)
 {

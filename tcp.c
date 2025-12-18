@@ -44,10 +44,8 @@ tcp_accept(int server, struct sockaddr_in *addr)
     socklen_t addr_len = sizeof(*addr);
     int client = accept(server, (struct sockaddr *) addr, &addr_len);
 
-    if(client < 0)
-        return(client);
-
-    sock_set_nonblock(client);
+    if(client != -1)
+        sock_set_nonblock(client);
 
     return(client);
 }

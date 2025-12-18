@@ -29,8 +29,8 @@ sock_read(int fd, char **sb)
 
     if(count > 0)
         da_push_items(sb, buf, count);
-    else
-        return(total);
+
+    return(total);
 }
 
 ssize_t
@@ -39,7 +39,7 @@ sock_write(int fd, char **sb)
     ssize_t count = write(fd, *sb, da_len(*sb));
 
     if(count > 0){
-        memmove(*sb, *sb + count, len(*sb) - count);
+        memmove(*sb, *sb + count, da_len(*sb) - count);
         da_header(*sb)->length -= count;
     }
 
