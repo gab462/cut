@@ -1,13 +1,11 @@
 #include "../cut.c"
+#include "../sock.c"
 #include "../tcp.c"
 #include "../task.c"
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/socket.h>
-#include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <assert.h>
 
 #define IP "127.0.0.1"
 #define PORT "8080"
@@ -24,9 +22,7 @@ server_client_task_poll(struct task *task)
 {
     struct server_client_task *client = (struct server_client_task *) task;
 
-    char buf[4096];
-
-    ssize_t received = recv(client->fd, buf, sizeof(buf), 0);
+    ssize_t received = sock_read(client->fd, &client->msg);
 
     if(received == -1 && errno != EAGAIN){ // Connection error, close
         printf("Lost connection.\n");
@@ -35,18 +31,7 @@ server_client_task_poll(struct task *task)
         return(true);
     }
 
-    if(received > 0)
-        push_items(&client->msg, buf, received);
-
-    if(len(client->msg) > 0){
-        ssize_t sent = send(client->fd, client->msg, len(client->msg), 0);
-
-        if(sent > 0){
-            memmove(client->msg, client->msg + sent, len(client->msg) - sent);
-            da_header(client->msg)->length -= sent;
-        }
-    }
-
+    sock_write(client->fd, &client->msg);
 
     return(false);
 }
@@ -101,6 +86,8 @@ main(void)
 
     struct concurrent_task *task
         = (struct concurrent_task *) task_group(server_accept_task(port));
+
+    printf("Listening on %s:%s...\n", IP, PORT);
 
     task->interface.data = &task->list;
 

@@ -1,23 +1,11 @@
 #ifndef INCLUDE_TCP_C
 #define INCLUDE_TCP_C
 
-#include <fcntl.h>
+#include "sock.c"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <assert.h>
-
-static inline
-void
-tcp_set_nonblock(int fd)
-{
-    int err;
-
-    int flags = fcntl(fd, F_GETFL, 0);
-    assert(flags != -1);
-    err = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-    assert(err != -1);
-}
 
 static inline
 int
@@ -28,7 +16,7 @@ tcp_listen(short port)
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     assert(fd != -1);
 
-    tcp_set_nonblock(fd);
+    sock_set_nonblock(fd);
 
     struct sockaddr_in addr = {
         .sin_family = AF_INET,
@@ -59,7 +47,7 @@ tcp_accept(int server, struct sockaddr_in *addr)
     if(client < 0)
         return(client);
 
-    tcp_set_nonblock(client);
+    sock_set_nonblock(client);
 
     return(client);
 }
@@ -86,7 +74,7 @@ tcp_connect(char *ip, char *port)
         err = connect(conn, p->ai_addr, p->ai_addrlen);
         if(err == -1) continue;
 
-        tcp_set_nonblock(conn);
+        sock_set_nonblock(conn);
 
         freeaddrinfo(res);
 

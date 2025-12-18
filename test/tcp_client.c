@@ -1,10 +1,9 @@
 #include "../cut.c"
+#include "../sock.c"
 #include "../tcp.c"
 #include "../task.c"
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/socket.h>
-#include <string.h>
 #include <unistd.h>
 #include <errno.h>
 #include <assert.h>
@@ -25,7 +24,7 @@ client_task_poll(struct task *task)
 
     char buf[4096];
 
-    ssize_t received = recv(client->fd, buf, sizeof(buf), 0);
+    ssize_t received = read(client->fd, buf, sizeof(buf));
 
     if(received == -1 && errno != EAGAIN){ // Connection error, close
         close(client->fd);
@@ -36,14 +35,8 @@ client_task_poll(struct task *task)
     if(received > 0)
         write(STDOUT_FILENO, buf, received);
 
-    if(len(client->msg) > 0){
-        ssize_t sent = send(client->fd, client->msg, len(client->msg), 0);
-
-        if(sent > 0){
-            memmove(client->msg, client->msg + sent, len(client->msg) - sent);
-            da_header(client->msg)->length -= sent;
-        }
-    }
+    if(len(client->msg) > 0)
+        sock_write(client->fd, &client->msg);
 
     return(false);
 }
@@ -63,7 +56,9 @@ main(void)
 {
     struct client_task *task = (struct client_task *) client_task(IP, PORT);
 
-    tcp_set_nonblock(STDIN_FILENO);
+    printf("Connected to %s:%s\n", IP, PORT);
+
+    sock_set_nonblock(STDIN_FILENO);
 
     while(!task_poll(&task->interface)){
         char buf[64];
