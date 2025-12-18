@@ -30,7 +30,7 @@ sock_read(int fd, char **sb)
     if(count > 0)
         da_push_items(sb, buf, count);
 
-    return(total);
+    return(count);
 }
 
 ssize_t
