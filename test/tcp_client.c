@@ -11,63 +11,67 @@
 #define IP "127.0.0.1"
 #define PORT "8080"
 
-struct client_task {
+struct connection {
     struct task interface;
     int fd;
-    char *msg;
 };
 
 bool
-client_task_poll(struct task *task)
+connection_poll(struct task *interface)
 {
-    struct client_task *client = (struct client_task *) task;
+    struct connection *self = (struct connection *) interface;
+    char **msg = (char **) &interface->data;
 
     char buf[4096];
 
-    ssize_t received = read(client->fd, buf, sizeof(buf));
+    ssize_t received = read(self->fd, buf, sizeof(buf));
 
-    if(received == -1 && errno != EAGAIN){ // Connection error, close
-        close(client->fd);
-        da_reset(&client->msg);
+    if(received == 0 || (received == -1 && errno != EAGAIN)){ // Connection closed or error
+        perror("Lost connection");
+        close(self->fd);
+        da_reset(msg);
         return(true);
     }
 
     if(received > 0)
         write(STDOUT_FILENO, buf, received);
 
-    if(len(client->msg) > 0)
-        sock_write(client->fd, &client->msg);
+    if(len(*msg) > 0)
+        sock_write(self->fd, msg);
 
     return(false);
 }
 
 struct task *
-client_task(char *ip, char *port)
+connection(char *ip, char *port)
 {
-    struct client_task *task = calloc(1, sizeof(struct client_task));
-    task->interface.poll = client_task_poll;
-    task->fd = tcp_connect(ip, port);
+    struct connection task = {
+        .interface.poll = connection_poll,
+        .fd = tcp_connect(ip, port)
+    };
 
-    return(&task->interface);
+    void *out = malloc(sizeof(task));
+    return(memcpy(out, &task, sizeof(task)));
 }
 
 int
 main(void)
 {
-    struct client_task *task = (struct client_task *) client_task(IP, PORT);
+    struct task *task = connection(IP, PORT);
+    char **msg = (char **) &task->data;
 
     printf("Connected to %s:%s\n", IP, PORT);
 
     sock_set_nonblock(STDIN_FILENO);
 
-    while(!task_poll(&task->interface)){
+    while(!task_poll(task)){
         char buf[64];
         ssize_t count = read(STDIN_FILENO, buf, sizeof(buf) - 1);
 
         if(count == -1){
             assert(errno == EAGAIN);
         }else if(count > 0){
-            push_items(&task->msg, buf, count);
+            push_items(msg, buf, count);
         }
 
         usleep(8000);

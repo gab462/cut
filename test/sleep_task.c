@@ -4,30 +4,31 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
-struct sleep_task {
+struct sleeper {
     struct task interface;
     int64_t until;
 };
 
 bool
-sleep_task_poll(struct task *task)
-{
-    struct sleep_task *sleeper = (struct sleep_task *) task;
-    const int64_t *dt = task->data;
+sleeper_poll(struct task *interface){
+    struct sleeper *self = (struct sleeper *) interface;
+    const int64_t *dt = interface->data;
 
-    sleeper->until -= *dt;
+    self->until -= *dt;
 
-    return(sleeper->until <= 0);
+    return(self->until <= 0);
 }
 
 struct task *
-sleep_task(float until)
+sleeper(float until)
 {
-    struct sleep_task *sleeper = calloc(1, sizeof(struct sleep_task));
-    sleeper->interface.poll = sleep_task_poll;
-    sleeper->until = until * 1000.f;
+    struct sleeper task = {
+        .interface.poll = sleeper_poll,
+        .until = until * 1000.f
+    };
 
-    return(&sleeper->interface);
+    void *out = malloc(sizeof(task));
+    return(memcpy(out, &task, sizeof(task)));
 }
 
 int64_t
@@ -43,10 +44,10 @@ main(void)
 {
     struct task *task =
         task_sequence(
-            sleep_task(1.f),
+            sleeper(1.f),
             task_group(
-                sleep_task(2.f),
-                sleep_task(2.f)
+                sleeper(2.f),
+                sleeper(2.f)
             )
         );
 

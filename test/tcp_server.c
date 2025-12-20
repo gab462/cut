@@ -10,73 +10,80 @@
 #define IP "127.0.0.1"
 #define PORT "8080"
 
-struct server_client_task {
+struct handler {
     struct task interface;
     int fd;
     struct sockaddr_in addr;
-    char *msg;
 };
 
 bool
-server_client_task_poll(struct task *task)
+handler_poll(struct task *interface)
 {
-    struct server_client_task *client = (struct server_client_task *) task;
+    struct handler *self = (struct handler *) interface;
+    char **msg = (char **) &interface->data;
 
-    ssize_t received = sock_read(client->fd, &client->msg);
+    ssize_t received = sock_read(self->fd, msg);
 
-    if(received == -1 && errno != EAGAIN){ // Connection error, close
-        printf("Lost connection.\n");
-        close(client->fd);
-        da_reset(&client->msg);
+    if(received == 0 || (received == -1 && errno != EAGAIN)){ // Connection closed or error
+        perror("Lost connection");
+        close(self->fd);
+        da_reset(msg);
         return(true);
     }
 
-    sock_write(client->fd, &client->msg);
+    ssize_t sent = sock_write(self->fd, msg);
+
+    if(sent > 0)
+        printf("Sent %ld bytes\n", sent);
 
     return(false);
 }
 
 struct task *
-server_client_task(int fd, struct sockaddr_in addr)
+handler(int fd, struct sockaddr_in addr)
 {
-    struct server_client_task *task = calloc(1, sizeof(struct server_client_task));
-    task->interface.poll = server_client_task_poll;
-    task->fd = fd;
-    task->addr = addr;
+    struct handler task = {
+        .interface.poll = handler_poll,
+        .fd = fd,
+        .addr = addr
+    };
 
-    return(&task->interface);
+    void *out = malloc(sizeof(task));
+    return(memcpy(out, &task, sizeof(task)));
 }
 
-struct server_accept_task {
+struct acceptor {
     struct task interface;
     int fd;
 };
 
 bool
-server_accept_task_poll(struct task *task)
+acceptor_poll(struct task *interface)
 {
-    struct server_accept_task *server = (struct server_accept_task *) task;
-    struct task ***client_tasks = (struct task ***) task->data;
+    struct acceptor *self = (struct acceptor *) interface;
+    struct task ***client_tasks = (struct task ***) interface->data;
 
     struct sockaddr_in addr;
-    int client = tcp_accept(server->fd, &addr);
+    int client = tcp_accept(self->fd, &addr);
 
     if(client != -1){
-        printf("Accepted connection.\n");
-        push(client_tasks, server_client_task(client, addr));
+        printf("Accepted connection %d.\n", len(*client_tasks));
+        push(client_tasks, handler(client, addr));
     }
 
     return(false);
 }
 
 struct task *
-server_accept_task(short port)
+acceptor(short port)
 {
-    struct server_accept_task *task = calloc(1, sizeof(struct server_accept_task));
-    task->interface.poll = server_accept_task_poll;
-    task->fd = tcp_listen(port);
+    struct acceptor task = {
+        .interface.poll = acceptor_poll,
+        .fd = tcp_listen(port)
+    };
 
-    return(&task->interface);
+    void *out = malloc(sizeof(task));
+    return(memcpy(out, &task, sizeof(task)));
 }
 
 int
@@ -84,8 +91,8 @@ main(void)
 {
     short port = atoi(PORT);
 
-    struct concurrent_task *task
-        = (struct concurrent_task *) task_group(server_accept_task(port));
+    struct task_group *task
+        = (struct task_group *) task_group(acceptor(port));
 
     printf("Listening on %s:%s...\n", IP, PORT);
 

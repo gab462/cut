@@ -20,7 +20,7 @@ task_poll(struct task *task)
     return(task->poll(task));
 }
 
-struct sequential_task {
+struct task_sequence {
     struct task interface;
     struct task **queue;
     bool init;
@@ -28,9 +28,9 @@ struct sequential_task {
 
 static inline
 bool
-sequential_task_poll(struct task *task)
+task_sequence_poll(struct task *task)
 {
-    struct sequential_task *seq = (struct sequential_task *) task;
+    struct task_sequence *seq = (struct task_sequence *) task;
 
     if(q_empty(seq->queue))
         return(true);
@@ -63,18 +63,20 @@ sequential_task_poll(struct task *task)
 
 static inline
 struct task *
-sequential_task(struct task **tasks, int count)
+task_sequence_impl(struct task **tasks, int count)
 {
-    struct sequential_task *seq = calloc(1, sizeof(struct sequential_task));
-    seq->interface.poll = sequential_task_poll;
+    struct task_sequence task = {
+        .interface.poll = task_sequence_poll
+    };
 
     for(int i = 0; i < count; i++)
-        q_enqueue(&seq->queue, tasks[i]);
+        q_enqueue(&task.queue, tasks[i]);
 
-    return(&seq->interface);
+    void *out = malloc(sizeof(task));
+    return(memcpy(out, &task, sizeof(task)));
 }
 
-struct concurrent_task {
+struct task_group {
     struct task interface;
     struct task **list;
     bool init;
@@ -82,9 +84,9 @@ struct concurrent_task {
 
 static inline
 bool
-concurrent_task_poll(struct task *task)
+task_group_poll(struct task *task)
 {
-    struct concurrent_task *group = (struct concurrent_task *) task;
+    struct task_group *group = (struct task_group *) task;
 
     for(int i = 0; i < da_len(group->list); i++){
         struct task *current = group->list[i];
@@ -111,24 +113,26 @@ concurrent_task_poll(struct task *task)
 
 static inline
 struct task *
-concurrent_task(struct task **tasks, int count)
+task_group_impl(struct task **tasks, int count)
 {
-    struct concurrent_task *group = calloc(1, sizeof(struct concurrent_task));
-    group->interface.poll = concurrent_task_poll;
+    struct task_group task = {
+        .interface.poll = task_group_poll
+    };
 
-    da_push_items(&group->list, tasks, count);
+    da_push_items(&task.list, tasks, count);
 
-    return(&group->interface);
+    void *out = malloc(sizeof(task));
+    return(memcpy(out, &task, sizeof(task)));
 }
 
 #define task_countof(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 #define task_sequence(...)                                              \
-    sequential_task(((struct task *[]){ __VA_ARGS__ }),                 \
-                    task_countof(((struct task *[]){ __VA_ARGS__ })))
+    task_sequence_impl(((struct task *[]){ __VA_ARGS__ }),              \
+                       task_countof(((struct task *[]){ __VA_ARGS__ })))
 
 #define task_group(...)                                                 \
-    concurrent_task(((struct task *[]){ __VA_ARGS__ }),                 \
+    task_group_impl(((struct task *[]){ __VA_ARGS__ }),                 \
                     task_countof(((struct task *[]){ __VA_ARGS__ })))
 
 #endif
