@@ -72,8 +72,7 @@ task_sequence_impl(struct task **tasks, int count)
     for(int i = 0; i < count; i++)
         q_enqueue(&task.queue, tasks[i]);
 
-    void *out = malloc(sizeof(task));
-    return(memcpy(out, &task, sizeof(task)));
+    return(cut_memdup(&task, sizeof(task)));
 }
 
 struct task_group {
@@ -121,8 +120,7 @@ task_group_impl(struct task **tasks, int count)
 
     da_push_items(&task.list, tasks, count);
 
-    void *out = malloc(sizeof(task));
-    return(memcpy(out, &task, sizeof(task)));
+    return(cut_memdup(&task, sizeof(task)));
 }
 
 #define task_countof(arr) (sizeof(arr) / sizeof((arr)[0]))

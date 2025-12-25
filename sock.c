@@ -12,10 +12,10 @@ static inline
 void
 sock_set_nonblock(int fd)
 {
-    int err;
-
     int flags = fcntl(fd, F_GETFL, 0);
-    err = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    if(flags == -1) perror(__func__);
+    int err = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    if(err == -1) perror(__func__);
 }
 
 static inline

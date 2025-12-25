@@ -50,8 +50,7 @@ connection(char *ip, char *port)
         .fd = tcp_connect(ip, port)
     };
 
-    void *out = malloc(sizeof(task));
-    return(memcpy(out, &task, sizeof(task)));
+    return(cut_memdup(&task, sizeof(task)));
 }
 
 int

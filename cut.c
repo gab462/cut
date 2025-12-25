@@ -242,6 +242,14 @@ q_tail(void *q)
         }                                       \
     }while(0)
 
+static inline
+void *
+cut_memdup(void *ptr, size_t size)
+{
+    void *out = malloc(size);
+    return(memcpy(out, ptr, size));
+}
+
 #define cut_with(start, end) for(bool done = ((start), false); !done; (end), done = true)
 #define cut_defer(exp) with(0, exp)
 
@@ -262,6 +270,7 @@ q_tail(void *q)
 #define appendf sb_appendf
 #define enqueue q_enqueue
 #define dequeue q_dequeue
+#define memdup cut_memdup
 #define with cut_with
 #define defer cut_defer
 
