@@ -15,9 +15,7 @@ sock_set_nonblock(int fd)
     int err;
 
     int flags = fcntl(fd, F_GETFL, 0);
-    assert(flags != -1);
     err = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-    assert(err != -1);
 }
 
 static inline

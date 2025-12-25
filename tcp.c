@@ -5,7 +5,14 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include <assert.h>
+
+#define tcp_check_err(ret)      \
+    do{                         \
+        if(ret == -1){          \
+            perror(__func__);   \
+            return(ret);        \
+        }                       \
+    }while(0)
 
 static inline
 int
@@ -14,7 +21,7 @@ tcp_listen(short port)
     int err;
 
     int fd = socket(AF_INET, SOCK_STREAM, 0);
-    assert(fd != -1);
+    tcp_check_err(fd);
 
     sock_set_nonblock(fd);
 
@@ -26,13 +33,13 @@ tcp_listen(short port)
 
     int reuse_addr = 1;
     err = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr));
-    assert(err != -1);
+    tcp_check_err(err);
 
     err = bind(fd, (struct sockaddr *) &addr, sizeof(addr));
-    assert(err != -1);
+    tcp_check_err(err);
 
     err = listen(fd, SOMAXCONN);
-    assert(err != -1);
+    tcp_check_err(err);
 
     return(fd);
 }
@@ -63,7 +70,11 @@ tcp_connect(char *ip, char *port)
 
     struct addrinfo *res;
     err = getaddrinfo(ip, port, &hints, &res);
-    assert(err == 0);
+
+    if(err != 0){
+        perror(__func__);
+        return err;
+    }
 
     for(struct addrinfo *p = res; p != NULL; p = p->ai_next){
         int conn = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
@@ -79,7 +90,7 @@ tcp_connect(char *ip, char *port)
         return(conn);
     }
 
-    assert(false && "Could not connect");
+    fprintf(stderr, "Could not connect");
     freeaddrinfo(res);
     return(-1);
 }

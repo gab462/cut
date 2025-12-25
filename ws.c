@@ -5,7 +5,6 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <poll.h>
-#include <assert.h>
 #include <curl/curl.h>
 
 static inline
@@ -25,7 +24,10 @@ ws_poll(CURL *curl, short events)
 {
     curl_socket_t socket_fd;
     CURLcode res = curl_easy_getinfo(curl, CURLINFO_ACTIVESOCKET, &socket_fd);
-    assert(res == CURLE_OK);
+    if(res != CURLE_OK){
+        fprintf(stderr, "%s\n", curl_easy_strerror(res));
+        return(-1);
+    }
 
     struct pollfd fd = {
         .fd = socket_fd,
@@ -33,7 +35,10 @@ ws_poll(CURL *curl, short events)
     };
 
     int ret = poll(&fd, 1, -1);
-    assert(ret > 0);
+    if(ret <= 0){
+        perror(__func__);
+        return(-1);
+    }
 
     return(fd.revents);
 }
@@ -43,7 +48,6 @@ void
 ws_poll_write(CURL *curl)
 {
     short revents = ws_poll(curl, POLLOUT);
-    assert(revents & POLLOUT);
 }
 
 static inline
@@ -51,7 +55,6 @@ void
 ws_poll_read(CURL *curl)
 {
     short revents = ws_poll(curl, POLLIN);
-    assert(revents & POLLIN);
 }
 
 static inline
