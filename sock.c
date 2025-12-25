@@ -20,6 +20,7 @@ sock_set_nonblock(int fd)
     assert(err != -1);
 }
 
+static inline
 ssize_t
 sock_read(int fd, char **sb)
 {
@@ -33,6 +34,7 @@ sock_read(int fd, char **sb)
     return(count);
 }
 
+static inline
 ssize_t
 sock_write(int fd, char **sb)
 {
