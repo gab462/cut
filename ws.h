@@ -1,7 +1,7 @@
-#ifndef INCLUDE_WS_C
-#define INCLUDE_WS_C
+#ifndef INCLUDE_WS_H
+#define INCLUDE_WS_H
 
-#include "cut.c"
+#include "cut.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <poll.h>

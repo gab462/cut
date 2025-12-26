@@ -1,7 +1,7 @@
-#ifndef INCLUDE_TCP_C
-#define INCLUDE_TCP_C
+#ifndef INCLUDE_TCP_H
+#define INCLUDE_TCP_H
 
-#include "sock.c"
+#include "sock.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>

@@ -1,5 +1,5 @@
-#include "../cut.c"
-#include "../task.c"
+#include "../cut.h"
+#include "../task.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <sys/time.h>

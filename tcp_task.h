@@ -1,9 +1,9 @@
-#ifndef INCLUDE_TCP_TASK_C
-#define INCLUDE_TCP_TASK_C
+#ifndef INCLUDE_TCP_TASK_H
+#define INCLUDE_TCP_TASK_H
 
-#include "task.c"
-#include "tcp.c"
-#include "cut.c"
+#include "task.h"
+#include "tcp.h"
+#include "cut.h"
 #include <sys/socket.h>
 #include <stdio.h>
 

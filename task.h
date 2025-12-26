@@ -1,7 +1,7 @@
-#ifndef INCLUDE_TASK_C
-#define INCLUDE_TASK_C
+#ifndef INCLUDE_TASK_H
+#define INCLUDE_TASK_H
 
-#include "cut.c"
+#include "cut.h"
 #include <stddef.h>
 #include <stdlib.h>
 

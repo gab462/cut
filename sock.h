@@ -1,7 +1,7 @@
-#ifndef INCLUDE_SOCK_C
-#define INCLUDE_SOCK_C
+#ifndef INCLUDE_SOCK_H
+#define INCLUDE_SOCK_H
 
-#include "cut.c"
+#include "cut.h"
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>

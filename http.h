@@ -1,7 +1,7 @@
-#ifndef INCLUDE_HTTP_C
-#define INCLUDE_HTTP_C
+#ifndef INCLUDE_HTTP_H
+#define INCLUDE_HTTP_H
 
-#include "cut.c"
+#include "cut.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <curl/curl.h>

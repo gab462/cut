@@ -1,7 +1,7 @@
-#include "../cut.c"
-#include "../sock.c"
-#include "../tcp_task.c"
-#include "../task.c"
+#include "../cut.h"
+#include "../sock.h"
+#include "../tcp_task.h"
+#include "../task.h"
 #include <stdio.h>
 #include <errno.h>
 
