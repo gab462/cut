@@ -5,7 +5,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-bool
+void
 sleeper(void **ctx, float until, int64_t dt){
     task_context_begin();
     int64_t total;
@@ -17,16 +17,16 @@ sleeper(void **ctx, float until, int64_t dt){
     task_ctx(ctx)->total -= dt;
 
     if(task_ctx(ctx)->total <= 0)
-        task_abort(ctx, true);
+        task_abort(ctx);
 
-    task_yield(ctx, false);
+    task_yield(ctx);
 
     task_ctx(ctx)->total -= dt;
 
     if(task_ctx(ctx)->total > 0)
-        return(false);
+        return;
 
-    task_end(ctx, true);
+    task_end(ctx);
 }
 
 int64_t
@@ -37,7 +37,7 @@ current_time_millis(void)
     return((int64_t)tv.tv_sec * 1000 + (int64_t)tv.tv_usec / 1000);
 }
 
-bool
+void
 task(void **ctx, float dt)
 {
     task_context_begin();
@@ -46,16 +46,18 @@ task(void **ctx, float dt)
 
     task_begin(ctx);
 
-    bool done = sleeper(&task_ctx(ctx)->child_ctx[0], 1.f, dt);
-    if(!done) return(false);
+    sleeper(&task_ctx(ctx)->child_ctx[0], 1.f, dt);
+    if(!task_done(task_ctx(ctx)->child_ctx[0])) return;
 
-    task_yield(ctx, false);
+    task_yield(ctx);
 
-    bool done_a = sleeper(&task_ctx(ctx)->child_ctx[1], 2.f, dt);
-    bool done_b = sleeper(&task_ctx(ctx)->child_ctx[2], 2.f, dt);
-    if(!done_a && !done_b) return(false);
+    sleeper(&task_ctx(ctx)->child_ctx[1], 2.f, dt);
+    sleeper(&task_ctx(ctx)->child_ctx[2], 2.f, dt);
+    if(!task_done(task_ctx(ctx)->child_ctx[1])
+       || !task_done(task_ctx(ctx)->child_ctx[2]))
+        return;
 
-    task_end(ctx, true);
+    task_end(ctx);
 }
 
 int
@@ -65,12 +67,16 @@ main(void)
     int64_t dt = 0;
 
     void *ctx = NULL;
-    while(!task(&ctx, dt)){
+    do{
+        usleep(1000);
+
         int64_t now = current_time_millis();
         dt = now - previous;
+
+        task(&ctx, dt);
+
         previous = now;
-        usleep(1000);
-    }
+    }while(!task_done(ctx));
 
     return(0);
 }

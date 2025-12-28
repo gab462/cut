@@ -27,4 +27,7 @@
 
 #define task_end(ctx, ...) } free(*(ctx)); *(ctx) = NULL; return __VA_ARGS__
 
+// Called outside of task
+#define task_done(ctx) (ctx == NULL)
+
 #endif

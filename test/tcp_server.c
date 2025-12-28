@@ -8,7 +8,7 @@
 #define IP "127.0.0.1"
 #define PORT "8080"
 
-bool
+void
 handler(void **ctx, int fd, struct sockaddr_in addr)
 {
     (void) addr;
@@ -25,7 +25,7 @@ handler(void **ctx, int fd, struct sockaddr_in addr)
         perror("Lost connection");
         close(fd);
         da_reset(&task_ctx(ctx)->msg);
-        task_abort(ctx, true);
+        task_abort(ctx);
     }
 
     ssize_t sent = sock_write(fd, &task_ctx(ctx)->msg);
@@ -33,9 +33,9 @@ handler(void **ctx, int fd, struct sockaddr_in addr)
     if(sent > 0)
         printf("Sent %ld bytes\n", sent);
 
-    return(false);
+    return;
 
-    task_end(ctx, true);
+    task_end(ctx);
 }
 
 int

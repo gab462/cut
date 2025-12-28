@@ -6,7 +6,7 @@
 #include "cut.h"
 #include <stdio.h>
 
-typedef bool (*tcp_handler_t)(void **ctx, int fd, struct sockaddr_in addr);
+typedef void (*tcp_handler_t)(void **ctx, int fd, struct sockaddr_in addr);
 
 static inline
 void
@@ -36,9 +36,9 @@ tcp_server(void **ctx, int fd, tcp_handler_t handler)
     for(int i = 0; i < da_len(task_ctx(ctx)->clients); i++){
         struct tcp_client *client = &task_ctx(ctx)->clients[i];
 
-        bool done = handler(&client->ctx, client->fd, client->addr);
+        handler(&client->ctx, client->fd, client->addr);
 
-        if(done){
+        if(task_done(client->ctx)){
             da_swap_delete(&task_ctx(ctx)->clients, i);
             i--;
 
