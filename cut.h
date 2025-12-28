@@ -259,7 +259,6 @@ q_tail(void *q)
 #define appendf sb_appendf
 #define enqueue q_enqueue
 #define dequeue q_dequeue
-#define memdup cut_memdup
 
 #endif
 
