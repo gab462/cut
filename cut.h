@@ -247,10 +247,11 @@ void *
 cut_memdup(void *ptr, size_t size)
 {
     void *out = malloc(size);
+    assert(out != NULL);
     return(memcpy(out, ptr, size));
 }
 
-#define cut_with(start, end) for(bool done = ((start), false); !done; (end), done = true)
+#define cut_with(start, end) for(bool done = (({start}), false); !done; ({end}), done = true)
 #define cut_defer(exp) with(0, exp)
 
 #ifndef CUT_REMOVE_PREFIX

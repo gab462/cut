@@ -4,85 +4,55 @@
 #include "task.h"
 #include "tcp.h"
 #include "cut.h"
-#include <sys/socket.h>
 #include <stdio.h>
 
-typedef bool (*tcp_handler_t)(int fd, struct sockaddr_in addr, void **data);
-
-struct tcp_cli_conn {
-    struct task interface;
-    int fd;
-    struct sockaddr_in addr;
-    tcp_handler_t handler;
-};
+typedef bool (*tcp_handler_t)(void **ctx, int fd, struct sockaddr_in addr);
 
 static inline
-bool
-tcp_cli_conn_poll(struct task *interface)
+void
+tcp_server(void **ctx, int fd, tcp_handler_t handler)
 {
-    struct tcp_cli_conn *self = (struct tcp_cli_conn *) interface;
-
-    return(self->handler(self->fd, self->addr, &interface->data));
-}
-
-static inline
-struct task *
-tcp_cli_conn(int fd, struct sockaddr_in addr, tcp_handler_t handler)
-{
-    struct tcp_cli_conn task = {
-        .interface.poll = tcp_cli_conn_poll,
-        .fd = fd,
-        .addr = addr,
-        .handler = handler
+    struct tcp_client {
+        void *ctx;
+        int fd;
+        struct sockaddr_in addr;
     };
 
-    return(cut_memdup(&task, sizeof(task)));
-}
+    task_context_begin();
+    struct tcp_client *clients;
+    task_context_end();
 
-struct tcp_acceptor {
-    struct task interface;
-    int fd;
-    tcp_handler_t handler;
-};
-
-static inline
-bool
-tcp_acceptor_poll(struct task *interface)
-{
-    struct tcp_acceptor *self = (struct tcp_acceptor *) interface;
-    struct task ***client_tasks = interface->data;
+    task_begin(ctx);
 
     struct sockaddr_in addr;
-    int client = tcp_accept(self->fd, &addr);
+    int client_fd = tcp_accept(fd, &addr); // only accepts one client per tick
 
-    if(client != -1){
-        printf("Accepted connection %d.\n", len(*client_tasks));
-        da_push(client_tasks, tcp_cli_conn(client, addr, self->handler));
+    if(client_fd != -1){
+        printf("Accepted connection %d.\n", len(task_ctx(ctx)->clients));
+        da_push(&task_ctx(ctx)->clients, { .fd = client_fd, .addr = addr });
+        printf("Total connections: %d.\n", len(task_ctx(ctx)->clients));
     }
 
-    return(false);
-}
+    for(int i = 0; i < da_len(task_ctx(ctx)->clients); i++){
+        struct tcp_client *client = &task_ctx(ctx)->clients[i];
 
-static inline
-struct task *
-tcp_acceptor(short port, tcp_handler_t handler)
-{
-    struct tcp_acceptor task = {
-        .interface.poll = tcp_acceptor_poll,
-        .fd = tcp_listen(port),
-        .handler = handler
-    };
+        bool done = handler(&client->ctx, client->fd, client->addr);
 
-    return(cut_memdup(&task, sizeof(task)));
-}
+        if(done){
+            da_swap_delete(&task_ctx(ctx)->clients, i);
+            i--;
 
-static inline
-struct task *
-tcp_server(short port, tcp_handler_t handler)
-{
-    struct task_group *task = (struct task_group *) task_group(tcp_acceptor(port, handler));
-    task->interface.data = &task->list;
-    return &task->interface;
+            printf("Total connections: %d.\n", len(task_ctx(ctx)->clients));
+
+            // Cleanup memory when no clients connected
+            if(da_len(task_ctx(ctx)->clients) == 0)
+                da_reset(&task_ctx(ctx)->clients);
+        }
+    }
+
+    return;
+
+    task_end(ctx);
 }
 
 #endif

@@ -90,7 +90,7 @@ tcp_connect(char *ip, char *port)
         return(conn);
     }
 
-    fprintf(stderr, "Could not connect");
+    fprintf(stderr, "Could not connect\n");
     freeaddrinfo(res);
     return(-1);
 }

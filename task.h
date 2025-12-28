@@ -1,136 +1,30 @@
 #ifndef INCLUDE_TASK_H
 #define INCLUDE_TASK_H
 
-#include "cut.h"
+// https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html
+
 #include <stddef.h>
 #include <stdlib.h>
 
-struct task {
-    void *data;
-    bool (*poll)(struct task *task);
-};
+#define task_context_begin() struct task_context { int task__line
+#define task_context_end() }
 
-static inline
-bool
-task_poll(struct task *task)
-{
-    if(task->poll == NULL)
-        return(true);
+#define task_ctx(ctx) (*((struct task_context **) ctx))
 
-    return(task->poll(task));
-}
+#define task_begin(ctx)                                                         \
+    *(ctx) = *(ctx) == NULL ? calloc(1, sizeof(struct task_context)) : *(ctx);  \
+    assert(*(ctx) != NULL);                                                     \
+    switch(task_ctx(ctx)->task__line){ case 0:;
 
-struct task_sequence {
-    struct task interface;
-    struct task **queue;
-    bool init;
-};
+#define task_yield(ctx, ...)                    \
+    do{                                         \
+        task_ctx(ctx)->task__line = __LINE__;   \
+        return __VA_ARGS__;                     \
+        case __LINE__:;                         \
+    }while(0)
 
-static inline
-bool
-task_sequence_poll(struct task *task)
-{
-    struct task_sequence *seq = (struct task_sequence *) task;
+#define task_abort(ctx, ...) do{ free(*(ctx)); *(ctx) = NULL; return __VA_ARGS__; }while(0)
 
-    if(q_empty(seq->queue))
-        return(true);
-
-    struct task *current = seq->queue[q_head(seq->queue)];
-
-    if(!seq->init){ // Set input for first task
-        current->data = task->data;
-        seq->init = true;
-    }
-
-    bool done = task_poll(current);
-
-    if(done){
-        task->data = current->data; // Get result from task
-
-        struct task *completed = q_dequeue(&seq->queue);
-        free(completed);
-
-        if(!q_empty(seq->queue)){
-            struct task *next = seq->queue[q_head(seq->queue)];
-            next->data = task->data; // Pass result as input to next task
-        }else{
-            q_reset(&seq->queue);
-        }
-    }
-
-    return(q_empty(seq->queue));
-}
-
-static inline
-struct task *
-task_sequence_impl(struct task **tasks, int count)
-{
-    struct task_sequence task = {
-        .interface.poll = task_sequence_poll
-    };
-
-    for(int i = 0; i < count; i++)
-        q_enqueue(&task.queue, tasks[i]);
-
-    return(cut_memdup(&task, sizeof(task)));
-}
-
-struct task_group {
-    struct task interface;
-    struct task **list;
-    bool init;
-};
-
-static inline
-bool
-task_group_poll(struct task *task)
-{
-    struct task_group *group = (struct task_group *) task;
-
-    for(int i = 0; i < da_len(group->list); i++){
-        struct task *current = group->list[i];
-
-        if(!group->init)
-            current->data = task->data;
-
-        bool done = task_poll(current);
-
-        if(done){
-            free(current);
-            da_swap_delete(&group->list, i);
-            i--;
-
-            if(da_len(group->list) == 0)
-                da_reset(&group->list);
-        }
-    }
-
-    group->init = true;
-
-    return(da_len(group->list) == 0);
-}
-
-static inline
-struct task *
-task_group_impl(struct task **tasks, int count)
-{
-    struct task_group task = {
-        .interface.poll = task_group_poll
-    };
-
-    da_push_items(&task.list, tasks, count);
-
-    return(cut_memdup(&task, sizeof(task)));
-}
-
-#define task_countof(arr) (sizeof(arr) / sizeof((arr)[0]))
-
-#define task_sequence(...)                                              \
-    task_sequence_impl(((struct task *[]){ __VA_ARGS__ }),              \
-                       task_countof(((struct task *[]){ __VA_ARGS__ })))
-
-#define task_group(...)                                                 \
-    task_group_impl(((struct task *[]){ __VA_ARGS__ }),                 \
-                    task_countof(((struct task *[]){ __VA_ARGS__ })))
+#define task_end(ctx, ...) } free(*(ctx)); *(ctx) = NULL; return __VA_ARGS__
 
 #endif
