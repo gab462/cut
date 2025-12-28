@@ -25,7 +25,7 @@ tcp_server(void **ctx, int fd, tcp_handler_t handler)
     task_begin(ctx);
 
     struct sockaddr_in addr;
-    int client_fd = tcp_accept(fd, &addr); // only accepts one client per tick
+    int client_fd = tcp_accept(fd, &addr); // TODO: accept more than one client per tick
 
     if(client_fd != -1){
         printf("Accepted connection %d.\n", len(task_ctx(ctx)->clients));
