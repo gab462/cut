@@ -24,6 +24,30 @@
         case __LINE__:;                         \
     }while(0)
 
+#define task_yield_while(ctx, pred) \
+    do{                             \
+        if(pred){                   \
+            task_yield(ctx);        \
+                                    \
+            if(pred)                \
+                return;             \
+        }                           \
+    }while(0)
+
+#define task_yield_from(ctx, other, other_ctx, ...)     \
+    do{                                                 \
+        other(other_ctx __VA_OPT__(,) __VA_ARGS__);     \
+                                                        \
+        if(!task_done(*(other_ctx))){                   \
+            task_yield(ctx);                            \
+                                                        \
+            other(other_ctx __VA_OPT__(,) __VA_ARGS__); \
+                                                        \
+            if(!task_done(*(other_ctx)))                \
+                return;                                 \
+        }                                               \
+    }while(0)
+
 #define task_abort(ctx, ...) do{ free(*(ctx)); *(ctx) = NULL; return __VA_ARGS__; }while(0)
 
 #define task_end(ctx, ...) } free(*(ctx)); *(ctx) = NULL; return __VA_ARGS__

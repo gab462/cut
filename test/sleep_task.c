@@ -19,12 +19,7 @@ sleeper(void **ctx, float until, int64_t dt){
     if(task_ctx(ctx)->total <= 0)
         task_abort(ctx);
 
-    task_yield(ctx);
-
-    task_ctx(ctx)->total -= dt;
-
-    if(task_ctx(ctx)->total > 0)
-        return;
+    task_yield_while(ctx, (task_ctx(ctx)->total -= dt) > 0);
 
     task_end(ctx);
 }
@@ -46,8 +41,7 @@ task(void **ctx, float dt)
 
     task_begin(ctx);
 
-    sleeper(&task_ctx(ctx)->child_ctx[0], 1.f, dt);
-    if(!task_done(task_ctx(ctx)->child_ctx[0])) return;
+    task_yield_from(ctx, sleeper, &task_ctx(ctx)->child_ctx[0], 1.f, dt);
 
     task_yield(ctx);
 
