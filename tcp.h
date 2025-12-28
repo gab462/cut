@@ -73,7 +73,7 @@ tcp_connect(char *ip, char *port)
 
     if(err != 0){
         perror(__func__);
-        return err;
+        return(err);
     }
 
     for(struct addrinfo *p = res; p != NULL; p = p->ai_next){

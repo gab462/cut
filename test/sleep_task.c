@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 bool
-sleeper(void **ctx, float until, float dt){
+sleeper(void **ctx, float until, int64_t dt){
     task_context_begin();
     int64_t total;
     task_context_end();
@@ -23,9 +23,7 @@ sleeper(void **ctx, float until, float dt){
 
     task_ctx(ctx)->total -= dt;
 
-    if(task_ctx(ctx)->total <= 0)
-        task_abort(ctx, true);
-    else
+    if(task_ctx(ctx)->total > 0)
         return(false);
 
     task_end(ctx, true);
@@ -49,11 +47,9 @@ task(void **ctx, float dt)
     task_begin(ctx);
 
     bool done = sleeper(&task_ctx(ctx)->child_ctx[0], 1.f, dt);
-    if(!done)
-        return(false);
-    else{
-        task_yield(ctx, false);
-    }
+    if(!done) return(false);
+
+    task_yield(ctx, false);
 
     bool done_a = sleeper(&task_ctx(ctx)->child_ctx[1], 2.f, dt);
     bool done_b = sleeper(&task_ctx(ctx)->child_ctx[2], 2.f, dt);
@@ -73,7 +69,7 @@ main(void)
         int64_t now = current_time_millis();
         dt = now - previous;
         previous = now;
-        usleep(100000);
+        usleep(1000);
     }
 
     return(0);
