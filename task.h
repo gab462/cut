@@ -5,6 +5,7 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #define task_context_begin() struct task_context { int task__line
 #define task_context_end() }

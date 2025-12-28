@@ -1,7 +1,7 @@
 CC := cc
 CFLAGS := -std=gnu11 -Wall -Wextra
 
-all: da sb q sleep_task tcp_client tcp_server
+all: da sb q sleep_task text_task tcp_client tcp_server
 
 %: %.c
 	$(CC) $(CFLAGS) -o $@ $< -ggdb -fsanitize=address,undefined
