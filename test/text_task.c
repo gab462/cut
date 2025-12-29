@@ -7,7 +7,8 @@
 #include <unistd.h>
 
 void
-sleeper(struct task_context *ctx, int64_t millis){
+sleeper(struct task_context *ctx, int64_t millis)
+{
     int64_t *remaining = task_ctx_alloc(ctx, int64_t);
     int64_t *previous = task_ctx_alloc(ctx, int64_t);
 

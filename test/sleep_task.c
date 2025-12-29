@@ -5,7 +5,8 @@
 #include <unistd.h>
 
 void
-sleeper(struct task_context *ctx, float until, int64_t dt){
+sleeper(struct task_context *ctx, float until, int64_t dt)
+{
     int64_t *total = task_ctx_alloc(ctx, int64_t);
 
     task_begin(ctx);
