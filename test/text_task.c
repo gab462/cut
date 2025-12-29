@@ -1,18 +1,10 @@
+#include "../cut.h"
 #include "../task.h"
 #include "../sock.h"
-#include <sys/time.h>
+#include "../term.h"
 #include <string.h>
 #include <stddef.h>
 #include <unistd.h>
-#include <termios.h>
-
-int64_t
-current_time_millis(void)
-{
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return((int64_t)tv.tv_sec * 1000 + (int64_t)tv.tv_usec / 1000);
-}
 
 void
 sleeper(struct task_context *ctx, int64_t millis){
@@ -22,10 +14,10 @@ sleeper(struct task_context *ctx, int64_t millis){
     task_begin(ctx);
 
     *remaining = millis;
-    *previous = current_time_millis();
+    *previous = unix_millis();
 
     task_yield_while(ctx, ({
-        int64_t now = current_time_millis();
+        int64_t now = unix_millis();
         int64_t dt = now - *previous;
         *previous = now;
 
@@ -78,27 +70,6 @@ presenter(struct task_context *ctx, char **text, int count)
     task_end(ctx);
 }
 
-struct termios
-term_set_canon(void)
-{
-    struct termios old, new;
-
-    tcgetattr(STDIN_FILENO, &old);
-
-    new = old;
-    new.c_lflag &= ~(ICANON | ECHO);
-
-    tcsetattr(STDIN_FILENO, TCSANOW, &new);
-
-    return(old);
-}
-
-void
-term_restore(struct termios cfg)
-{
-    tcsetattr(STDIN_FILENO, TCSANOW, &cfg);
-}
-
 int
 main(void)
 {
@@ -109,7 +80,7 @@ main(void)
     };
 
     sock_set_nonblock(STDIN_FILENO);
-    struct termios cfg = term_set_canon();
+    term_set_raw();
 
     struct task_context ctx = {0};
     do{
@@ -117,7 +88,7 @@ main(void)
         usleep(1000);
     }while(!task_done(ctx));
 
-    term_restore(cfg);
+    term_set_canon();
 
     return(0);
 }

@@ -50,7 +50,7 @@ task_ctx_alloc_impl(struct task_context *ctx, size_t size, size_t alignment, str
     return(ptr);
 }
 
-#define task_begin(ctx) (ctx)->state = TASK_RUNNING; switch(ctx->line){ case 0:;
+#define task_begin(ctx) (ctx)->state = TASK_RUNNING; switch((ctx)->line){ case 0:;
 
 #define task_return(ctx, ...) do{ (ctx)->current_ptr = 0; return __VA_ARGS__; }while(0)
 
@@ -94,10 +94,10 @@ task_ctx_alloc_impl(struct task_context *ctx, size_t size, size_t alignment, str
         memset(ctx, 0, sizeof(*(ctx))); \
     }while(0)
 
-#define task_abort(ctx, ...)            \
-    do{                                 \
-        task_ctx_reset(ctx);            \
-        task_return(ctx, __VA_ARGS__);  \
+#define task_abort(ctx, ...)    \
+    do{                         \
+        task_ctx_reset(ctx);    \
+        return __VA_ARGS__;     \
     }while(0)
 
 #define task_end(ctx, ...) } task_ctx_reset(ctx); return __VA_ARGS__

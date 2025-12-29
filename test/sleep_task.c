@@ -2,7 +2,6 @@
 #include "../task.h"
 #include <stddef.h>
 #include <stdlib.h>
-#include <sys/time.h>
 #include <unistd.h>
 
 void
@@ -20,14 +19,6 @@ sleeper(struct task_context *ctx, float until, int64_t dt){
     task_yield_while(ctx, (*total -= dt) > 0);
 
     task_end(ctx);
-}
-
-int64_t
-current_time_millis(void)
-{
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return((int64_t)tv.tv_sec * 1000 + (int64_t)tv.tv_usec / 1000);
 }
 
 void
@@ -53,14 +44,14 @@ task(struct task_context *ctx, float dt)
 int
 main(void)
 {
-    int64_t previous = current_time_millis();
+    int64_t previous = unix_millis();
     int64_t dt = 0;
 
     struct task_context ctx = {0};
     do{
         usleep(1000);
 
-        int64_t now = current_time_millis();
+        int64_t now = unix_millis();
         dt = now - previous;
 
         task(&ctx, dt);
