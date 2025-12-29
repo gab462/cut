@@ -4,10 +4,12 @@
 // https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html
 
 #include "arena.h"
+#include "cut.h"
 #include <stddef.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <stdalign.h>
+#include <string.h>
+#include <assert.h>
 
 enum task_state {
     TASK_IDLE,

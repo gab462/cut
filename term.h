@@ -33,7 +33,7 @@ term_width(void)
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
-    return w.ws_col;
+    return(w.ws_col);
 }
 
 static inline
@@ -43,7 +43,7 @@ term_height(void)
     struct winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
-    return w.ws_row;
+    return(w.ws_row);
 }
 
 #endif

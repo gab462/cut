@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdalign.h>
+#include <string.h>
+#include <assert.h>
 
 #define ARENA_PAGE_SIZE 4096
 
