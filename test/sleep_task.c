@@ -6,20 +6,18 @@
 #include <unistd.h>
 
 void
-sleeper(void **ctx, float until, int64_t dt){
-    task_context_begin();
-    int64_t total;
-    task_context_end();
+sleeper(struct task_context *ctx, float until, int64_t dt){
+    int64_t *total = task_ctx_alloc(ctx, int64_t);
 
     task_begin(ctx);
 
-    task_ctx(ctx)->total = until * 1000.f;
-    task_ctx(ctx)->total -= dt;
+    *total = until * 1000.f;
+    *total -= dt;
 
-    if(task_ctx(ctx)->total <= 0)
+    if(*total <= 0)
         task_abort(ctx);
 
-    task_yield_while(ctx, (task_ctx(ctx)->total -= dt) > 0);
+    task_yield_while(ctx, (*total -= dt) > 0);
 
     task_end(ctx);
 }
@@ -33,23 +31,21 @@ current_time_millis(void)
 }
 
 void
-task(void **ctx, float dt)
+task(struct task_context *ctx, float dt)
 {
-    task_context_begin();
-    void *child_ctx[3];
-    task_context_end();
+    struct task_context *child_ctx = task_ctx_alloc(ctx, struct task_context, .count = 3);
 
     task_begin(ctx);
 
-    task_yield_from(ctx, sleeper, &task_ctx(ctx)->child_ctx[0], 1.f, dt);
+    task_yield_from(ctx, sleeper, &child_ctx[0], 1.f, dt);
 
     task_yield(ctx);
 
-    sleeper(&task_ctx(ctx)->child_ctx[1], 2.f, dt);
-    sleeper(&task_ctx(ctx)->child_ctx[2], 2.f, dt);
-    if(!task_done(task_ctx(ctx)->child_ctx[1])
-       || !task_done(task_ctx(ctx)->child_ctx[2]))
-        return;
+    sleeper(&child_ctx[1], 2.f, dt);
+    sleeper(&child_ctx[2], 2.f, dt);
+    if(!task_done(child_ctx[1])
+       || !task_done(child_ctx[2]))
+        task_return(ctx);
 
     task_end(ctx);
 }
@@ -60,7 +56,7 @@ main(void)
     int64_t previous = current_time_millis();
     int64_t dt = 0;
 
-    void *ctx = NULL;
+    struct task_context ctx = {0};
     do{
         usleep(1000);
 

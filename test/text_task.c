@@ -15,55 +15,46 @@ current_time_millis(void)
 }
 
 void
-sleeper(void **ctx, int64_t millis){
-    task_context_begin();
-    int64_t remaining;
-    int64_t previous;
-    task_context_end();
+sleeper(struct task_context *ctx, int64_t millis){
+    int64_t *remaining = task_ctx_alloc(ctx, int64_t);
+    int64_t *previous = task_ctx_alloc(ctx, int64_t);
 
     task_begin(ctx);
 
-    task_ctx(ctx)->remaining = millis;
-    task_ctx(ctx)->previous = current_time_millis();
+    *remaining = millis;
+    *previous = current_time_millis();
 
     task_yield_while(ctx, ({
         int64_t now = current_time_millis();
-        int64_t dt = now - task_ctx(ctx)->previous;
-        task_ctx(ctx)->previous = now;
+        int64_t dt = now - *previous;
+        *previous = now;
 
-        (task_ctx(ctx)->remaining -= dt) > 0;
+        (*remaining -= dt) > 0;
     }));
 
     task_end(ctx);
 }
 
 void
-text_writer(void **ctx, char *text)
+text_writer(struct task_context *ctx, char *text)
 {
-    task_context_begin();
-    size_t offset;
-    void *sleep_ctx;
-    task_context_end();
+    size_t *offset = task_ctx_alloc(ctx, size_t);
+    struct task_context *sleep_ctx = task_ctx_alloc(ctx, struct task_context);
 
     task_begin(ctx);
 
-    for(task_ctx(ctx)->offset = 0;
-        task_ctx(ctx)->offset < strlen(text);
-        task_ctx(ctx)->offset++){
-        write(STDOUT_FILENO, text + task_ctx(ctx)->offset, 1);
+    for(*offset = 0; *offset < strlen(text); (*offset)++){
+        write(STDOUT_FILENO, text + *offset, 1);
 
-        task_yield_from(ctx, sleeper, &task_ctx(ctx)->sleep_ctx, 50);
+        task_yield_from(ctx, sleeper, sleep_ctx, 50);
     }
 
     task_end(ctx);
 }
 
 void
-key_waiter(void **ctx, char c)
+key_waiter(struct task_context *ctx, char c)
 {
-    task_context_begin();
-    task_context_end();
-
     task_begin(ctx);
 
     task_yield_while(ctx, getchar() != c);
@@ -72,18 +63,16 @@ key_waiter(void **ctx, char c)
 }
 
 void
-presenter(void **ctx, char **text, int count)
+presenter(struct task_context *ctx, char **text, int count)
 {
-    task_context_begin();
-    void *child_ctx;
-    int n;
-    task_context_end();
+    struct task_context *child_ctx = task_ctx_alloc(ctx, struct task_context);
+    int *n = task_ctx_alloc(ctx, int);
 
     task_begin(ctx);
 
-    for(task_ctx(ctx)->n = 0; task_ctx(ctx)->n < count; task_ctx(ctx)->n++){
-        task_yield_from(ctx, text_writer, &task_ctx(ctx)->child_ctx, text[task_ctx(ctx)->n]);
-        task_yield_from(ctx, key_waiter, &task_ctx(ctx)->child_ctx, 'n');
+    for(*n = 0; *n < count; (*n)++){
+        task_yield_from(ctx, text_writer, child_ctx, text[*n]);
+        task_yield_from(ctx, key_waiter, child_ctx, 'n');
     }
 
     task_end(ctx);
@@ -101,7 +90,7 @@ term_set_canon(void)
 
     tcsetattr(STDIN_FILENO, TCSANOW, &new);
 
-    return old;
+    return(old);
 }
 
 void
@@ -122,7 +111,7 @@ main(void)
     sock_set_nonblock(STDIN_FILENO);
     struct termios cfg = term_set_canon();
 
-    void *ctx = NULL;
+    struct task_context ctx = {0};
     do{
         presenter(&ctx, text, sizeof(text)/sizeof(text[0]));
         usleep(1000);

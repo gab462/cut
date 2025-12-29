@@ -1,5 +1,5 @@
 CC := cc
-CFLAGS := -std=gnu11 -Wall -Wextra
+CFLAGS := -std=gnu11 -Wall -Wextra -Wno-initializer-overrides
 
 all: da sb q sleep_task text_task tcp_client tcp_server
 

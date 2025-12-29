@@ -9,31 +9,29 @@
 #define PORT "8080"
 
 void
-handler(void **ctx, int fd, struct sockaddr_in addr)
+handler(struct task_context *ctx, int fd, struct sockaddr_in addr)
 {
     (void) addr;
 
-    task_context_begin();
-    char *msg;
-    task_context_end();
+    char **msg = task_ctx_alloc(ctx, char *);
 
     task_begin(ctx);
 
-    ssize_t received = sock_read(fd, &task_ctx(ctx)->msg);
+    ssize_t received = sock_read(fd, msg);
 
     if(received == 0 || (received == -1 && errno != EAGAIN)){ // Connection closed or error
         perror("Lost connection");
         close(fd);
-        da_reset(&task_ctx(ctx)->msg);
+        da_reset(msg);
         task_abort(ctx);
     }
 
-    ssize_t sent = sock_write(fd, &task_ctx(ctx)->msg);
+    ssize_t sent = sock_write(fd, msg);
 
     if(sent > 0)
         printf("Sent %ld bytes\n", sent);
 
-    return;
+    task_return(ctx);
 
     task_end(ctx);
 }
@@ -47,7 +45,7 @@ main(void)
 
     printf("Listening on %s:%s...\n", IP, PORT);
 
-    void *ctx = NULL;
+    struct task_context ctx = {0};
     for(;;){
         tcp_server(&ctx, fd, handler);
         usleep(8000);
