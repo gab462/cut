@@ -52,6 +52,15 @@ task_ctx_alloc_impl(struct task_context *ctx, size_t size, size_t alignment, str
     return(ptr);
 }
 
+static inline
+void
+task_ctx_reset(struct task_context *ctx)
+{
+    da_reset(&ctx->ptrs);
+    arena_reset(&ctx->arena);
+    memset(ctx, 0, sizeof(*ctx));
+}
+
 #define task_begin(ctx) (ctx)->state = TASK_RUNNING; switch((ctx)->line){ case 0:;
 
 #define task_return(ctx, ...) do{ (ctx)->current_ptr = 0; return __VA_ARGS__; }while(0)
@@ -75,26 +84,11 @@ task_ctx_alloc_impl(struct task_context *ctx, size_t size, size_t alignment, str
         }                           \
     }while(0)
 
-#define task_yield_from(ctx, other, other_ctx, ...)     \
-    do{                                                 \
-        other(other_ctx __VA_OPT__(,) __VA_ARGS__);     \
-                                                        \
-        if(!task_done(*(other_ctx))){                   \
-            task_yield(ctx);                            \
-                                                        \
-            other(other_ctx __VA_OPT__(,) __VA_ARGS__); \
-                                                        \
-            if(!task_done(*(other_ctx)))                \
-                task_return(ctx);                       \
-        }                                               \
-    }while(0)
-
-#define task_ctx_reset(ctx)             \
-    do{                                 \
-        da_reset(&(ctx)->ptrs);         \
-        arena_reset(&(ctx)->arena);     \
-        memset(ctx, 0, sizeof(*(ctx))); \
-    }while(0)
+#define task_yield_from(ctx, other, other_ctx, ...) \
+    task_yield_while(ctx, (                         \
+        other(other_ctx __VA_OPT__(,) __VA_ARGS__), \
+        !task_done(*(other_ctx))                    \
+    ));
 
 #define task_abort(ctx, ...)    \
     do{                         \
