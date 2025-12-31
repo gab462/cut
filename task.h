@@ -82,13 +82,20 @@ task_ctx_reset(struct task_context *ctx)
         }                                       \
     }while(0)
 
-// TODO: yield_from for functions returning values
-
 #define task_yield_from(ctx, other, other_ctx, ...) \
     task_yield_while(ctx, (                         \
         other(other_ctx __VA_OPT__(,) __VA_ARGS__), \
         !task_done(*(other_ctx))                    \
     ));
+
+// FIXME: yields at least once and yields on end
+#define task_yield_with(ctx, other, other_ctx, ...)                         \
+    do{                                                                     \
+        task_yield(ctx, other(other_ctx __VA_OPT__(,) __VA_ARGS__));        \
+                                                                            \
+        if(!task_done(*(other_ctx)))                                        \
+            task_return(ctx, other(other_ctx __VA_OPT__(,) __VA_ARGS__));   \
+    }while(0)
 
 #define task_abort(ctx, ...)    \
     do{                         \
