@@ -31,13 +31,13 @@ sleeper(struct task_context *ctx, int64_t millis)
 void
 text_writer(struct task_context *ctx, char *text)
 {
-    size_t *offset = task_ctx_alloc(ctx, size_t);
+    size_t *i = task_ctx_alloc(ctx, size_t);
     struct task_context *sleep_ctx = task_ctx_alloc(ctx, struct task_context);
 
     task_begin(ctx);
 
-    for(*offset = 0; *offset < strlen(text); ++*offset){
-        write(STDOUT_FILENO, text + *offset, 1);
+    for(*i = 0; *i < strlen(text); ++*i){
+        write(STDOUT_FILENO, text + *i, 1);
 
         task_yield_while(ctx, (
             sleeper(sleep_ctx, 50),
@@ -62,13 +62,13 @@ void
 presenter(struct task_context *ctx, char **text, int count)
 {
     struct task_context *child_ctx = task_ctx_alloc(ctx, struct task_context);
-    int *n = task_ctx_alloc(ctx, int);
+    int *i = task_ctx_alloc(ctx, int);
 
     task_begin(ctx);
 
-    for(*n = 0; *n < count; ++*n){
+    for(*i = 0; *i < count; ++*i){
         task_yield_while(ctx, (
-            text_writer(child_ctx, text[*n]),
+            text_writer(child_ctx, text[*i]),
             !task_done(*child_ctx)
         ));
 

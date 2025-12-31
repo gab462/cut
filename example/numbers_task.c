@@ -11,13 +11,12 @@ struct range_opt {
 int
 range_impl(struct task_context *ctx, int to, struct range_opt opt)
 {
-    int *current = task_ctx_alloc(ctx, int);
+    int *i = task_ctx_alloc(ctx, int);
 
     task_begin(ctx);
 
-    *current = opt.from;
-
-    task_yield_while(ctx, *current < to, (*current += opt.step) - opt.step);
+    for(*i = opt.from; *i < to; *i += opt.step)
+        task_yield(ctx, *i);
 
     task_end(ctx, to);
 }
@@ -35,12 +34,11 @@ numbers(struct task_context *ctx)
         !task_done(*child_ctx)
     ), ret);
 
-    task_yield_while(ctx, (
-        ret = range(child_ctx, 20, .from = 10, .step = 2),
-        !task_done(*child_ctx)
-    ), ret);
+    do{
+        task_yield(ctx, range(child_ctx, 20, .from = 10, .step = 2));
+    }while(!task_done(*child_ctx));
 
-    task_end(ctx, 20);
+    task_end(ctx, 21);
 }
 
 int
