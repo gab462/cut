@@ -72,17 +72,17 @@ task_ctx_reset(struct task_context *ctx)
         case __LINE__:;                     \
     }while(0)
 
-// TODO: yield_while and yield_from for functions returning values
-
-#define task_yield_while(ctx, pred) \
-    do{                             \
-        if(pred){                   \
-            task_yield(ctx);        \
-                                    \
-            if(pred)                \
-                task_return(ctx);   \
-        }                           \
+#define task_yield_while(ctx, pred, ...)        \
+    do{                                         \
+        if(pred){                               \
+            task_yield(ctx, __VA_ARGS__);       \
+                                                \
+            if(pred)                            \
+                task_return(ctx, __VA_ARGS__);  \
+        }                                       \
     }while(0)
+
+// TODO: yield_from for functions returning values
 
 #define task_yield_from(ctx, other, other_ctx, ...) \
     task_yield_while(ctx, (                         \
