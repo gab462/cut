@@ -36,10 +36,13 @@ text_writer(struct task_context *ctx, char *text)
 
     task_begin(ctx);
 
-    for(*offset = 0; *offset < strlen(text); (*offset)++){
+    for(*offset = 0; *offset < strlen(text); ++*offset){
         write(STDOUT_FILENO, text + *offset, 1);
 
-        task_yield_from(ctx, sleeper, sleep_ctx, 50);
+        task_yield_while(ctx, (
+            sleeper(sleep_ctx, 50),
+            !task_done(*sleep_ctx)
+        ));
     }
 
     task_end(ctx);
@@ -63,9 +66,16 @@ presenter(struct task_context *ctx, char **text, int count)
 
     task_begin(ctx);
 
-    for(*n = 0; *n < count; (*n)++){
-        task_yield_from(ctx, text_writer, child_ctx, text[*n]);
-        task_yield_from(ctx, key_waiter, child_ctx, 'n');
+    for(*n = 0; *n < count; ++*n){
+        task_yield_while(ctx, (
+            text_writer(child_ctx, text[*n]),
+            !task_done(*child_ctx)
+        ));
+
+        task_yield_while(ctx, (
+            key_waiter(child_ctx, 'n'),
+            !task_done(*child_ctx)
+        ));
     }
 
     task_end(ctx);

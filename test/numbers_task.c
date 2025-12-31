@@ -26,11 +26,19 @@ int
 numbers(struct task_context *ctx)
 {
     struct task_context *child_ctx = task_ctx_alloc(ctx, struct task_context);
+    int ret;
 
     task_begin(ctx);
 
-    task_yield_with(ctx, range, child_ctx, 5);
-    task_yield_with(ctx, range, child_ctx, 19, .from = 10, .step = 2);
+    task_yield_while(ctx, (
+        ret = range(child_ctx, 5),
+        !task_done(*child_ctx)
+    ), ret);
+
+    task_yield_while(ctx, (
+        ret = range(child_ctx, 20, .from = 10, .step = 2),
+        !task_done(*child_ctx)
+    ), ret);
 
     task_end(ctx, 20);
 }
