@@ -41,8 +41,6 @@ task_ctx_alloc_impl(struct task_context *ctx, size_t size, size_t alignment, str
         // alloc if first run
         ptr = arena_alloc_impl(&ctx->arena, size, alignment, opt);
         da_push(&ctx->ptrs, ptr);
-
-        return(ptr);
     }else{
         // otherwise reuse pointers
         assert(ctx->current_ptr < da_len(ctx->ptrs));
