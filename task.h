@@ -11,13 +11,8 @@
 #include <string.h>
 #include <assert.h>
 
-enum task_state {
-    TASK_IDLE,
-    TASK_RUNNING
-};
-
 struct task_context {
-    enum task_state state;
+    bool running;
     int line;
     struct arena arena;
     void **ptrs;
@@ -37,7 +32,7 @@ task_ctx_alloc_impl(struct task_context *ctx, size_t size, size_t alignment, str
 {
     void *ptr;
 
-    if(ctx->state == TASK_IDLE){
+    if(!ctx->running){
         // alloc if first run
         ptr = arena_alloc_impl(&ctx->arena, size, alignment, opt);
         da_push(&ctx->ptrs, ptr);
@@ -59,7 +54,7 @@ task_ctx_reset(struct task_context *ctx)
     memset(ctx, 0, sizeof(*ctx));
 }
 
-#define task_begin(ctx) (ctx)->state = TASK_RUNNING; switch((ctx)->line){ case 0:;
+#define task_begin(ctx) (ctx)->running = true; switch((ctx)->line){ case 0:;
 
 #define task_return(ctx, ...) do{ (ctx)->current_ptr = 0; return __VA_ARGS__; }while(0)
 
@@ -78,6 +73,6 @@ task_ctx_reset(struct task_context *ctx)
 
 #define task_end(ctx, ...) } task_ctx_reset(ctx); return __VA_ARGS__
 
-#define task_done(ctx) ((ctx).state == TASK_IDLE)
+#define task_done(ctx) (!(ctx).running)
 
 #endif
