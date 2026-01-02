@@ -9,21 +9,14 @@
 void
 sleeper(struct task_context *ctx, int64_t millis)
 {
-    int64_t *remaining = task_ctx_alloc(ctx, int64_t);
-    int64_t *previous = task_ctx_alloc(ctx, int64_t);
+    int64_t *until = task_ctx_alloc(ctx, int64_t);
 
     task_begin(ctx);
 
-    *remaining = millis;
-    *previous = unix_millis();
+    *until = unix_millis() + millis;
 
-    task_yield_while(ctx, ({
-        int64_t now = unix_millis();
-        int64_t dt = now - *previous;
-        *previous = now;
-
-        (*remaining -= dt) > 0;
-    }));
+    while(unix_millis() < *until)
+        task_yield(ctx);
 
     task_end(ctx);
 }
@@ -39,10 +32,8 @@ text_writer(struct task_context *ctx, char *text)
     for(*i = 0; *i < strlen(text); ++*i){
         write(STDOUT_FILENO, text + *i, 1);
 
-        task_yield_while(ctx, (
-            sleeper(sleep_ctx, 50),
-            !task_done(*sleep_ctx)
-        ));
+        while(sleeper(sleep_ctx, 50), !task_done(*sleep_ctx))
+            task_yield(ctx);
     }
 
     task_end(ctx);
@@ -53,7 +44,8 @@ key_waiter(struct task_context *ctx, char c)
 {
     task_begin(ctx);
 
-    task_yield_while(ctx, getchar() != c);
+    while(getchar() != c)
+        task_yield(ctx);
 
     task_end(ctx);
 }
@@ -67,15 +59,11 @@ presenter(struct task_context *ctx, char **text, int count)
     task_begin(ctx);
 
     for(*i = 0; *i < count; ++*i){
-        task_yield_while(ctx, (
-            text_writer(child_ctx, text[*i]),
-            !task_done(*child_ctx)
-        ));
+        while(text_writer(child_ctx, text[*i]), !task_done(*child_ctx))
+            task_yield(ctx);
 
-        task_yield_while(ctx, (
-            key_waiter(child_ctx, 'n'),
-            !task_done(*child_ctx)
-        ));
+        while(key_waiter(child_ctx, 'n'), !task_done(*child_ctx))
+            task_yield(ctx);
     }
 
     task_end(ctx);

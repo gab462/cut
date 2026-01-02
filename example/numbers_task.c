@@ -29,10 +29,8 @@ numbers(struct task_context *ctx)
 
     task_begin(ctx);
 
-    task_yield_while(ctx, (
-        ret = range(child_ctx, 5),
-        !task_done(*child_ctx)
-    ), ret);
+    while(ret = range(child_ctx, 5), !task_done(*child_ctx))
+        task_yield(ctx, ret);
 
     do{
         task_yield(ctx, range(child_ctx, 20, .from = 10, .step = 2));
