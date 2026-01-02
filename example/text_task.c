@@ -32,7 +32,7 @@ text_writer(struct task_context *ctx, char *text)
     for(*i = 0; *i < strlen(text); ++*i){
         write(STDOUT_FILENO, text + *i, 1);
 
-        while(sleeper(sleep_ctx, 50), !task_done(*sleep_ctx))
+        while(sleeper(sleep_ctx, 50), sleep_ctx->running)
             task_yield(ctx);
     }
 
@@ -59,10 +59,10 @@ presenter(struct task_context *ctx, char **text, int count)
     task_begin(ctx);
 
     for(*i = 0; *i < count; ++*i){
-        while(text_writer(child_ctx, text[*i]), !task_done(*child_ctx))
+        while(text_writer(child_ctx, text[*i]), child_ctx->running)
             task_yield(ctx);
 
-        while(key_waiter(child_ctx, 'n'), !task_done(*child_ctx))
+        while(key_waiter(child_ctx, 'n'), child_ctx->running)
             task_yield(ctx);
     }
 
@@ -85,7 +85,7 @@ main(void)
     do{
         presenter(&ctx, text, sizeof(text)/sizeof(text[0]));
         usleep(1000);
-    }while(!task_done(ctx));
+    }while(ctx.running);
 
     term_set_canon();
 

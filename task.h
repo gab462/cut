@@ -73,6 +73,4 @@ task_ctx_reset(struct task_context *ctx)
 
 #define task_end(ctx, ...) } task_ctx_reset(ctx); return __VA_ARGS__
 
-#define task_done(ctx) (!(ctx).running)
-
 #endif

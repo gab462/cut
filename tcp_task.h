@@ -36,7 +36,7 @@ tcp_server(struct task_context *ctx, int fd, tcp_handler_t handler)
 
         handler(&client->ctx, client->fd, client->addr);
 
-        if(task_done(client->ctx)){
+        if(!client->ctx.running){
             da_swap_delete(clients, i);
             i--;
 

@@ -29,12 +29,12 @@ numbers(struct task_context *ctx)
 
     task_begin(ctx);
 
-    while(ret = range(child_ctx, 5), !task_done(*child_ctx))
+    while(ret = range(child_ctx, 5), child_ctx->running)
         task_yield(ctx, ret);
 
     do{
         task_yield(ctx, range(child_ctx, 20, .from = 10, .step = 2));
-    }while(!task_done(*child_ctx));
+    }while(child_ctx->running);
 
     task_end(ctx, 21);
 }
@@ -47,7 +47,7 @@ main(void)
     do{
         int n = numbers(&ctx);
         printf("%d\n", n);
-    }while(!task_done(ctx));
+    }while(ctx.running);
 
     return(0);
 }
