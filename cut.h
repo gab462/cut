@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <time.h>
 #include <assert.h>
 
 struct da_header
@@ -223,15 +222,6 @@ q_tail(void *q)
         }                                       \
     }while(0)
 
-static inline
-int64_t
-cut_unix_millis(void)
-{
-    struct timespec ts;
-    timespec_get(&ts, TIME_UTC);
-    return((int64_t)ts.tv_sec * 1000 + (int64_t)ts.tv_nsec / 1000000);
-}
-
 #ifndef CUT_REMOVE_PREFIX
 #define CUT_REMOVE_PREFIX 1
 #endif
@@ -249,7 +239,6 @@ cut_unix_millis(void)
 #define appendf sb_appendf
 #define enqueue q_enqueue
 #define dequeue q_dequeue
-#define unix_millis cut_unix_millis
 
 #endif
 

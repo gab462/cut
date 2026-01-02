@@ -1,4 +1,4 @@
-#include "../cut.h"
+#include "../unix_time.h"
 #include "../task.h"
 #include "../sock.h"
 #include "../term.h"
@@ -13,9 +13,9 @@ sleeper(struct task_context *ctx, int64_t millis)
 
     task_begin(ctx);
 
-    *until = unix_millis() + millis;
+    *until = time_millis() + millis;
 
-    while(unix_millis() < *until)
+    while(time_millis() < *until)
         task_yield(ctx);
 
     task_end(ctx);
