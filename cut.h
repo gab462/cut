@@ -120,6 +120,12 @@ da_cap(void *da)
         da_header(*(sb))->length += size;                       \
     }while(0)
 
+#define sb_consume(sb, count)                                   \
+    do{                                                         \
+        memmove(*(sb), *(sb) + count, da_len(*(sb)) - count);   \
+        da_header(*(sb))->length -= count;                      \
+    }while(0)
+
 struct q_header
 {
     int head, tail;

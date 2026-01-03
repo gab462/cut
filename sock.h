@@ -38,10 +38,8 @@ sock_write(int fd, char **sb)
 {
     ssize_t count = write(fd, *sb, da_len(*sb));
 
-    if(count > 0){
-        memmove(*sb, *sb + count, da_len(*sb) - count);
-        da_header(*sb)->length -= count;
-    }
+    if(count > 0)
+        sb_consume(sb, count);
 
     return(count);
 }
