@@ -6,15 +6,15 @@
 #include "cut.h"
 #include <stdio.h>
 
-typedef void (*tcp_handler_t)(struct task_context *ctx, int fd, struct sockaddr_in addr);
+typedef void (*tcp_handler_t)(struct task_context *ctx, socket_t sock, struct sockaddr_in addr);
 
 static inline
 void
-tcp_server(struct task_context *ctx, int fd, tcp_handler_t handler)
+tcp_server(struct task_context *ctx, socket_t sock, tcp_handler_t handler)
 {
     struct tcp_client {
         struct task_context ctx;
-        int fd;
+        socket_t sock;
         struct sockaddr_in addr;
     };
 
@@ -23,18 +23,18 @@ tcp_server(struct task_context *ctx, int fd, tcp_handler_t handler)
     task_begin(ctx);
 
     struct sockaddr_in addr;
-    int client_fd = tcp_accept(fd, &addr); // TODO: accept more than one client per tick
+    socket_t client_sock = tcp_accept(sock, &addr); // TODO: accept more than one client per tick
 
-    if(client_fd != -1){
+    if(client_sock != SOCK_INVALID){
         printf("Accepted connection %d.\n", da_len(*clients));
-        da_push(clients, { .fd = client_fd, .addr = addr });
+        da_push(clients, { .sock = client_sock, .addr = addr });
         printf("Total connections: %d.\n", da_len(*clients));
     }
 
     for(int i = 0; i < da_len(*clients); i++){
         struct tcp_client *client = &(*clients)[i];
 
-        handler(&client->ctx, client->fd, client->addr);
+        handler(&client->ctx, client->sock, client->addr);
 
         if(!client->ctx.running){
             da_swap_delete(clients, i);
